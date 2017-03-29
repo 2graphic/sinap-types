@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "format": "tsfmt -r && tslint --fix --project ."
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0",
+    "tslint": "^4.5.1",
+    "typescript": "^2.2.2",
+    "typescript-formatter": "^5.1.2"
+  }
+}
