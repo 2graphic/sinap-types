@@ -1,3 +1,6 @@
+import { setEquivalent, mapEquivalent } from "./util";
+import { Value } from ".";
+
 export namespace Type {
 
     export interface Type {
@@ -65,7 +68,7 @@ export namespace Type {
             } else {
                 return false;
             }
-        } else if (a instanceof SimpleObject) {
+        } else if (a instanceof CustomObject) {
             if (a.equals(b)) {
                 return true;
             } else if (a.superType) {
@@ -125,57 +128,21 @@ export namespace Type {
         }
     }
 
-    // TODO: move these functions to a Util library
-    export function mapEquivalent<K, V>(a: Map<K, V>, b: Map<K, V>, equals: (a: V, b: V) => boolean) {
-        if (a.size !== b.size) {
-            return false;
-        }
-        for (const [k, v] of a.entries()) {
-            if (!b.has(k)) {
-                return false;
-            }
-            if (!equals(v, b.get(k)!)) {
-                return false;
-            }
-        }
-        return true;
-    }
 
-    export function setEquivalent<V>(a: Set<V>, b: Set<V>): boolean {
-        if (a.size !== b.size) {
-            return false;
-        }
-        for (const c of a.values()) {
-            if (!b.has(c)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-
-    function makePrettyNames(members: Iterable<string>, prettyNames?: Map<string, string>) {
-        if (!prettyNames) {
-            prettyNames = new Map();
-        }
+    function inferPrettyNames(members: Iterable<string>, prettyNames: Map<string, string>) {
         for (const key of members) {
             if (!prettyNames.has(key)) {
                 prettyNames.set(key, key[0].toUpperCase() + key.substr(1).replace(/([a-z])([A-Z])/g, "$1 $2"));
             }
         }
-        return prettyNames;
     }
 
-    function makeVisibility(members: Iterable<string>, visibility?: Map<string, boolean>) {
-        if (!visibility) {
-            visibility = new Map();
-        }
+    function inferVisibility(members: Iterable<string>, visibility: Map<string, boolean>) {
         for (const key of members) {
             if (!visibility.has(key)) {
                 visibility.set(key, true);
             }
         }
-        return visibility;
     }
 
     export interface RecordLike {
@@ -185,16 +152,14 @@ export namespace Type {
     }
 
     export class Record implements Type, RecordLike {
-        readonly prettyNames: Map<string, string>;
-        readonly visibility: Map<string, boolean>;
         constructor(
             readonly name: string,
             readonly members: Map<string, Type>,
-            prettyNames?: Map<string, string>,
-            visibility?: Map<string, boolean>,
+            readonly prettyNames = new Map<string, string>(),
+            readonly visibility = new Map<string, boolean>(),
         ) {
-            this.prettyNames = makePrettyNames(this.members.keys(), prettyNames);
-            this.visibility = makeVisibility(this.members.keys(), visibility);
+            inferPrettyNames(this.members.keys(), prettyNames);
+            inferVisibility(this.members.keys(), visibility);
         }
 
         equals(that: Type): boolean {
@@ -204,18 +169,22 @@ export namespace Type {
         }
     }
 
-    export class SimpleObject implements Type, RecordLike {
-        readonly prettyNames: Map<string, string>;
-        readonly visibility: Map<string, boolean>;
+    export class CustomObject implements Type, RecordLike {
         constructor(
             readonly name: string,
+            readonly superType: CustomObject | null,
             readonly members: Map<string, Type>,
-            readonly superType?: SimpleObject,
-            prettyNames?: Map<string, string>,
-            visibility?: Map<string, boolean>,
+            readonly methods = new Map<string,
+                {
+                    argTypes: Type.Type[],
+                    returnType: Type.Type | null,
+                    implementation: (this: any, ...args: Value.Value[]) => Value.Value | void
+                }>(),
+            readonly prettyNames = new Map<string, string>(),
+            readonly visibility = new Map<string, boolean>(),
         ) {
-            this.prettyNames = makePrettyNames(this.members.keys(), prettyNames);
-            this.visibility = makeVisibility(this.members.keys(), visibility);
+            inferPrettyNames(this.members.keys(), prettyNames);
+            inferVisibility(this.members.keys(), visibility);
         }
 
         equals(that: Type): boolean {
@@ -243,8 +212,8 @@ export namespace Type {
 
     export class Intersection implements Type, UnionOrIntersection {
         readonly name: string;
-        readonly types: Set<SimpleObject>;
-        constructor(types: Iterable<SimpleObject>) {
+        readonly types: Set<CustomObject>;
+        constructor(types: Iterable<CustomObject>) {
             this.types = new Set(types);
             this.name = [...this.types.values()].map(t => t.name).join(" & ");
         }
@@ -253,5 +222,7 @@ export namespace Type {
             return that instanceof Intersection && setEquivalent(this.types, that.types);
         }
     }
+
+    export type MetaType = typeof Literal | typeof Primitive | typeof CustomObject | typeof Intersection | typeof Union | typeof Record;
 
 }

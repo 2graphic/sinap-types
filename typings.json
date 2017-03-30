@@ -4,5 +4,9 @@
   },
   "devDependencies": {
     "chai": "registry:npm/chai#3.5.0+20160723033700"
+  },
+  "dependencies": {
+    "deep-equal": "registry:dt/deep-equal#1.0.0+20170307111145",
+    "uuid": "registry:npm/uuid#3.0.1+20161206160008"
   }
 }
