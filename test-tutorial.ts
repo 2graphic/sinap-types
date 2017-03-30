@@ -257,7 +257,7 @@ describe("Tutorial", () => {
                     key: n1,
                     from: undefined, // old value
                     to: n17 // new value
-                }); 
+                });
                 done();
             });
 

@@ -10,14 +10,23 @@ export namespace Value {
 
     export type Listener = (keyPath: (string | number)[], change: any) => void;
 
+    /**
+     * Holds a bunch of values and ties them all together. Allows you to retrieve a
+     * value by UUID.
+     */
     export class Environment {
         values = new Map<string, Value>();
 
+        /**
+         * Make an object of the given `type`
+         * @param type type of the object to create
+         */
         make(type: Type.Type) {
             const vnew = new (valueConstructorForType(type))(type, this);
             this.add(vnew);
             return vnew;
         }
+
 
         add(value: Value) {
             this.values.set(value.uuid, value);
@@ -88,17 +97,44 @@ export namespace Value {
         };
     }
 
+    /**
+     * A generic typed value
+     */
     export abstract class Value {
+        /**
+         * A unique way to reference this object
+         */
         readonly uuid = uuid();
+
+        /**
+         * This is a simple javascript object (something that could be `JSON.stringify`d,
+         * so no complicated objects or cycles) that represents the Value. The value
+         * can be reconstructed from this representation and vice versa.
+         */
         abstract readonly serialRepresentation: any;
+
+        /**
+         * Unused by us, available for: whatever you want to tag with this value
+         */
         public context: any;
 
+        /**
+         * @param type the type that goes with the `Value`
+         * @param environment the `Environment` this will be part of
+         */
         constructor(
             readonly type: Type.Type,
             readonly environment: Environment) {
 
         }
 
+        /**
+         * Subclasses can override this if the can determine equality more easily.
+         *
+         * Generic version checks if UUID's match. Failing that it checks if the serial
+         * representations are the same,  and recurses from there
+         * @param that Value to compare with
+         */
         deepEqual(that: Value): boolean {
             if (this.uuid === that.uuid) {
                 return true;
@@ -376,6 +412,7 @@ export namespace Value {
         }
     }
 
+    // TODO: find a way to support `subtype` on this
     export class SetType implements Type.Type {
         name = "Set";
         typeParameter: Type.Type;
