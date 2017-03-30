@@ -31,7 +31,7 @@ export function traverse(serial: any, visit: (a: any, path: (string | number)[])
     }
     if (typeof (serial) === "object") {
         for (const key in serial) {
-            traverse(serial[key], visit, existingPath.concat([key]));
+            traverse(serial[key], visit, [...existingPath, key]);
         }
     }
 }

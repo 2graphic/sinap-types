@@ -91,6 +91,7 @@ export namespace Value {
     export abstract class Value {
         readonly uuid = uuid();
         abstract readonly serialRepresentation: any;
+        public context: any;
 
         constructor(
             readonly type: Type.Type,
