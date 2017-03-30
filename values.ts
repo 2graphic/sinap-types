@@ -8,6 +8,8 @@ export namespace Value {
 
     export type ValueReference = { kind: "value-reference", uuid: string };
 
+    export type Listener = (keyPath: (string | number)[], change: any) => void;
+
     export class Environment {
         values = new Map<string, Value>();
 
@@ -36,10 +38,42 @@ export namespace Value {
             }
             return value;
         }
+
+        valueChanged(value: Value, change: any) {
+            const listenerMap = this.listeners.get(value.uuid);
+            if (listenerMap) {
+                for (const [listener, path] of listenerMap.entries()) {
+                    listener(path, change);
+                }
+            }
+        }
+
+        listeners: Map<string, Map<Listener, (string | number)[]>> = new Map();
+
+        listen(value: Value, listener: Listener, existingPath: (string | number)[] = []) {
+            let listenerMap = this.listeners.get(value.uuid);
+            if (!listenerMap) {
+                listenerMap = new Map();
+                this.listeners.set(value.uuid, listenerMap);
+            }
+            if (listenerMap.has(listener)) {
+                // cycle detected, do nothing?
+            } else {
+                listenerMap.set(listener, existingPath);
+                traverse(value.serialRepresentation, (a, path) => {
+                    if (a.kind === "value-reference") {
+                        const referencedValue = this.fromReference(a);
+                        this.listen(referencedValue, listener, path);
+                        return false;
+                    }
+                    return true;
+                }, existingPath);
+            }
+        }
     }
 
-
-    const classes: [Type.MetaType, { new (t: Type.Type, environment: Environment): Value }][] = [];
+    type ExtendedMetaType = Type.MetaType | typeof ArrayType | typeof SetType | typeof MapType;
+    const classes: [ExtendedMetaType, { new (t: Type.Type, environment: Environment): Value }][] = [];
     function valueConstructorForType(type: Type.Type) {
         const potentialConstructors = classes.filter(([t, _]) => type instanceof t).map(([_, v]) => v);
         if (potentialConstructors.length !== 1) {
@@ -48,7 +82,7 @@ export namespace Value {
         return potentialConstructors[0];
     }
 
-    function TypeValue(s: Type.MetaType) {
+    function TypeValue(s: ExtendedMetaType) {
         return (constructor: { new (t: Type.Type, environment: Environment): Value }) => {
             classes.push([s, constructor]);
         };
@@ -106,18 +140,29 @@ export namespace Value {
         get serialRepresentation() {
             return this.value;
         }
-        value: Type.PrimitiveTS;
+        private _value: Type.PrimitiveTS;
+        get value() {
+            return this._value;
+        }
+        set value(v) {
+            if (typeof (v) !== this.type.name) {
+                throw new Error(`cannot store a ${typeof (v)} in a ${this.type.name}`);
+            }
+            const oldValue = this._value;
+            this._value = v;
+            this.environment.valueChanged(this, { from: oldValue, to: v });
+        }
 
         constructor(type: Type.Primitive, environment: Environment, value?: Type.PrimitiveTS) {
             super(type, environment);
             if (value) {
-                this.value = value;
+                this._value = value;
             } else if (this.type.name === "number") {
-                this.value = 0;
+                this._value = 0;
             } else if (this.type.name === "string") {
-                this.value = "";
+                this._value = "";
             } else if (this.type.name === "boolean") {
-                this.value = false;
+                this._value = false;
             }
         }
     }
@@ -133,6 +178,14 @@ export namespace Value {
         }
     }
 
+    function assignRecords(a: Value, b: Value): boolean {
+        if ((a instanceof Record) && (b instanceof Record) && Type.isSubtype(a.type, b.type)) {
+            b.assign(a);
+            return true;
+        }
+        return false;
+    }
+
     @TypeValue(Type.Record)
     export class Record extends Value {
         private _value: { [a: string]: Value } = {};
@@ -146,13 +199,29 @@ export namespace Value {
                     throw new Error(`must set values to .value`);
                 }
                 if (!Type.isSubtype(v.type, type)) {
-                    throw new Error(`${v.type.name} is not assignable to ${type}`);
+                    throw new Error(`${v.type.name} is not assignable to ${type.name}`);
                 }
-                t[k] = v;
-                this.environment.add(v);
+                if (!assignRecords(v, t[k])) {
+                    const oldValue = t[k];
+                    t[k] = v;
+                    this.environment.valueChanged(this, { key: k, from: oldValue, to: v });
+                    this.environment.add(v);
+                }
                 return true;
             }
         });
+
+        assign(rec: Record) {
+            for (const key of rec.type.members.keys()) {
+                const v1 = this.value[key];
+                const v2 = rec.value[key];
+                if ((v1 instanceof Primitive) && ((v2 instanceof Primitive) || (v2 instanceof Literal))) {
+                    v1.value = v2.value;
+                } else {
+                    this.value[key] = rec.value[key];
+                }
+            }
+        }
 
         get serialRepresentation() {
             const serialRepresentation: { [a: string]: { kind: "value-reference", uuid: string } } = {};
@@ -176,11 +245,11 @@ export namespace Value {
         equals: (that) => that === CustomObjectType,
     };
 
-    // TODO: uncomment
-    // @TypeValue(Type.Object)
-    export class CustomObject<M extends Manager> extends Value {
+    export abstract class BaseObject extends Value {
+        abstract simpleRepresentation: any;
+
         get serialRepresentation() {
-            return deepCopy(this.manager.simpleRepresentation, (k) => {
+            return deepCopy(this.simpleRepresentation, (k) => {
                 if (k instanceof Value) {
                     return { replace: true, value: this.environment.toReference(k) };
                 }
@@ -188,49 +257,76 @@ export namespace Value {
             });
         }
 
-        constructor(readonly manager: M, environment: Environment) {
-            super(CustomObjectType, environment);
+        constructor(type: Type.Type, environment: Environment) {
+            super(type, environment);
         }
     }
 
-    export function makeObject(type: Type.CustomObject, environment: Environment) {
-        const manager = new MethodManager(type, environment);
-        return new CustomObject(manager, environment);
+    export class ArrayType implements Type.Type {
+        name = "Array";
+        typeParameter: Type.Type;
+
+        equals(that: Type.Type): boolean {
+            return that instanceof ArrayType && this.typeParameter === that.typeParameter;
+        }
     }
 
-    export interface Manager {
-        simpleRepresentation: any;
-    }
-
-    export class ArrayManager implements Manager {
+    @TypeValue(ArrayType)
+    export class ArrayObject extends BaseObject {
         private underlying: Value[] = [];
 
         get simpleRepresentation() {
             return this.underlying;
         }
 
-        constructor(readonly type: Type.Type) {
-
+        constructor(readonly type: ArrayType, environment: Environment) {
+            super(type, environment);
         }
 
         push(v: Value) {
-            return this.underlying.push(v);
+            const index = this.underlying.push(v);
+            this.environment.valueChanged(this, { push: v });
+            return index;
         }
 
         pop() {
-            return this.underlying.pop();
+            const value = this.underlying.pop();
+            this.environment.valueChanged(this, { pop: value });
+            return value;
         }
 
         index(n: number, newValue?: Value) {
             if (newValue) {
-                return this.underlying[n] = newValue;
+                if (!assignRecords(newValue, this.underlying[n])) {
+                    const oldValue = this.underlying[n];
+                    this.underlying[n] = newValue;
+                    this.environment.valueChanged(this, { index: n, from: oldValue, to: newValue });
+                    return newValue;
+                } else {
+                    // note this shouldn't assign, the below is correct
+                    return this.underlying[n];
+                }
             } else {
                 return this.underlying[n];
             }
         }
     }
 
-    export class MapManager implements Manager {
+    export class MapType implements Type.Type {
+        name = "Map";
+        constructor(readonly keyType: Type.Type,
+            readonly valueType: Type.Type) {
+
+        }
+
+        equals(that: Type.Type): boolean {
+            return that instanceof MapType && this.keyType === that.keyType && this.valueType === that.valueType;
+        }
+    }
+
+
+    @TypeValue(MapType)
+    export class MapObject extends BaseObject {
         private underlying: Map<Value, Value> = new Map();
 
         get simpleRepresentation() {
@@ -240,42 +336,102 @@ export namespace Value {
             };
         }
 
-        constructor(readonly keyType: Type.Type, readonly valueType: Type.Type, readonly environment: Environment) {
-
+        constructor(readonly type: MapType, environment: Environment) {
+            super(type, environment);
         }
 
         has(k: Value) {
-            if (!Type.isSubtype(k.type, this.keyType)) {
+            if (!Type.isSubtype(k.type, this.type.keyType)) {
                 throw new Error("invalid key");
             }
             return this.underlying.has(k);
         }
 
         get(k: Value) {
-            if (!Type.isSubtype(k.type, this.keyType)) {
+            if (!Type.isSubtype(k.type, this.type.keyType)) {
                 throw new Error("invalid key");
             }
             return this.underlying.get(k);
         }
 
         set(k: Value, v: Value) {
-            if (!Type.isSubtype(k.type, this.keyType)) {
+            if (!Type.isSubtype(k.type, this.type.keyType)) {
                 throw new Error("invalid key");
             }
-            if (!Type.isSubtype(v.type, this.valueType)) {
+            if (!Type.isSubtype(v.type, this.type.valueType)) {
                 throw new Error("invalid value");
             }
-            this.environment.add(k);
-            this.environment.add(v);
-            return this.underlying.set(k, v);
+            const existingValue = this.underlying.get(k);
+            if (existingValue && (v.type instanceof Record)) {
+                if (!assignRecords(v, existingValue)) {
+                    throw Error("WTF 21627132");
+                }
+            } else {
+                this.environment.add(k);
+                this.environment.add(v);
+                this.underlying.set(k, v);
+                this.environment.valueChanged(this, { key: k, from: existingValue, to: v });
+            }
         }
     }
 
-    export class MethodManager implements Manager {
+    export class SetType implements Type.Type {
+        name = "Set";
+        typeParameter: Type.Type;
+
+        equals(that: Type.Type): boolean {
+            return that instanceof SetType && this.typeParameter === that.typeParameter;
+        }
+    }
+
+    @TypeValue(SetType)
+    export class SetObject extends BaseObject {
+        private underlying: Set<Value> = new Set();
+
+        get simpleRepresentation() {
+            return {
+                kind: "es6-set-object",
+                values: [...this.underlying.values()]
+            };
+        }
+
+        constructor(readonly type: SetType, readonly environment: Environment) {
+            super(type, environment);
+        }
+
+        has(k: Value) {
+            if (!Type.isSubtype(k.type, this.type.typeParameter)) {
+                throw new Error(`invalid key ${k}`);
+            }
+            return this.underlying.has(k);
+        }
+
+        add(v: Value) {
+            if (!Type.isSubtype(v.type, this.type.typeParameter)) {
+                throw new Error("invalid value");
+            }
+            this.environment.add(v);
+            this.underlying.add(v);
+            this.environment.valueChanged(this, { add: v });
+        }
+
+        delete(v: Value) {
+            if (!Type.isSubtype(v.type, this.type.typeParameter)) {
+                throw new Error("invalid value");
+            }
+            // TODO: notify environment for garbage collection
+            const result = this.underlying.delete(v);
+            this.environment.valueChanged(this, { delete: v });
+            return result;
+        }
+    }
+
+    @TypeValue(Type.CustomObject)
+    export class CustomObject extends BaseObject {
         simpleRepresentation: any = {};
 
-        constructor(readonly type: Type.CustomObject, readonly environment: Environment) {
-
+        constructor(readonly type: Type.CustomObject, environment: Environment) {
+            super(type, environment);
         }
 
         call(name: string, ...args: Value[]): Value | void {
@@ -288,6 +444,8 @@ export namespace Value {
                     throw new Error("incompatible arguments");
                 }
             });
+
+            // TODO: track changes originating here
             const returnValue = method.implementation.call(this.simpleRepresentation, ...args) as void | Value;
             if (method.returnType) {
                 if (!returnValue || !Type.isSubtype(returnValue.type, method.returnType)) {
@@ -309,7 +467,11 @@ export namespace Value {
             if (!Type.isSubtype(value.type, type)) {
                 throw new Error(`cannot set field ${name}, type of value passed is incorrect`);
             }
-            this.simpleRepresentation[name] = value;
+            const oldValue = this.simpleRepresentation[name];
+            if (!assignRecords(value, this.simpleRepresentation[name])) {
+                this.simpleRepresentation[name] = value;
+                this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
+            }
         }
     }
 }

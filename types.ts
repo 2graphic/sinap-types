@@ -12,6 +12,7 @@ export namespace Type {
     export type PrimitiveName = "string" | "number" | "boolean";
 
     export function isSubtype(a: Type, b: Type): boolean {
+        // TODO: figure out how to deal with types defined elsewhere
         // TODO: ensure all cases are checked
         if (b instanceof Intersection) {
             if (a instanceof Intersection) {

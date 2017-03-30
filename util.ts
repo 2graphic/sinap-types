@@ -25,13 +25,13 @@ export function setEquivalent<V>(a: Set<V>, b: Set<V>): boolean {
     return true;
 }
 
-export function traverse(serial: any, visit: (a: any) => boolean) {
-    if (!visit(serial)) {
+export function traverse(serial: any, visit: (a: any, path: (string | number)[]) => boolean, existingPath: (string | number)[] = []) {
+    if (!visit(serial, existingPath)) {
         return;
     }
     if (typeof (serial) === "object") {
         for (const key in serial) {
-            traverse(serial[key], visit);
+            traverse(serial[key], visit, existingPath.concat([key]));
         }
     }
 }
