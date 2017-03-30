@@ -256,8 +256,8 @@ describe("Tutorial", () => {
                 expect(c).to.deep.equal({
                     key: n1,
                     from: undefined, // old value
-                    to: n17
-                }); // new value
+                    to: n17 // new value
+                }); 
                 done();
             });
 
