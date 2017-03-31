@@ -1,14 +1,29 @@
 /// <reference path="typings/index.d.ts" />
 
 import { Type } from "./types";
-import { traverse, deepCopy, deepEqual } from "./util";
+import { traverse, deepCopy, deepEqual, setEquivalent } from "./util";
 import { v4 as uuid } from "uuid";
 
 export namespace Value {
 
     export type ValueReference = { kind: "value-reference", uuid: string };
 
-    export type Listener = (keyPath: (string | number)[], change: any) => void;
+    class Listener {
+        constructor(
+            readonly callback: (root: Value, value: Value, other: any)=>void,
+            readonly filter: (value: Value)=>boolean,
+            readonly root: Value,
+        ) {}
+    }
+
+    function traverseDeps(root: Value, visit: (v: Value)=>boolean) {
+        if (!visit(root)) {
+            return;
+        }
+        for (const dep of root.dependencyChildren) {
+            traverseDeps(dep, visit);
+        }
+    }
 
     /**
      * Holds a bunch of values and ties them all together. Allows you to retrieve a
@@ -30,6 +45,7 @@ export namespace Value {
 
         add(value: Value) {
             this.values.set(value.uuid, value);
+            this.updateDependencies(value, new Set(), new Set(dependecies(value)));
             return value;
         }
 
@@ -48,36 +64,76 @@ export namespace Value {
             return value;
         }
 
+        private updateDependencies(value: Value, oldDeps: Set<Value>, newDeps: Set<Value>) {
+            const removedDependecies = [...oldDeps].filter(x=>!newDeps.has(x));
+            const addedDependecies = [...newDeps].filter(x=>!oldDeps.has(x));
+
+            for (const dep of removedDependecies) {
+                dep.dependencyParents.delete(value);
+            }
+
+            for (const dep of addedDependecies) {
+                dep.dependencyParents.add(value);
+            }
+
+            value.dependencyChildren = newDeps;
+            this.rebuildDependencyMaps();
+        }
+
+        private addDepencies(listener: Listener) {
+            traverseDeps(listener.root, (v)=>{
+                if (!listener.filter(v)) {
+                    return false;
+                }
+                if (!this.values.has(v.uuid)) {
+                    new Error("while traversing dependencies, a Value was found that was not in the environment")
+                }
+                let pool = this.listenersForValue.get(v);
+                if (pool) {
+                    if (pool.has(listener)) {
+                        // break cycles
+                        return false;
+                    }
+                } else {
+                    pool = new Set();
+                    this.listenersForValue.set(v, pool);
+                }
+                pool.add(listener);
+                return true;
+            })
+        }
+
+        private rebuildDependencyMaps() {
+            this.listenersForValue = new Map();
+            for (const listener of this.listeners) {
+                this.addDepencies(listener);
+            }
+        }
+
         valueChanged(value: Value, change: any) {
-            const listenerMap = this.listeners.get(value.uuid);
-            if (listenerMap) {
-                for (const [listener, path] of listenerMap.entries()) {
-                    listener(path, change);
+            const newDeps = new Set(dependecies(value));
+            if (! setEquivalent(newDeps, value.dependencyChildren)) {
+                this.updateDependencies(value, value.dependencyChildren, newDeps);
+            }
+
+            const listeners = this.listenersForValue.get(value);
+            if (listeners) {
+                for (const listener of listeners) {
+                    listener.callback(listener.root, value, change);
                 }
             }
         }
 
-        listeners: Map<string, Map<Listener, (string | number)[]>> = new Map();
+        private listenersForValue = new Map<Value, Set<Listener>>();
+        private listeners: Set<Listener> = new Set();
 
-        listen(value: Value, listener: Listener, existingPath: (string | number)[] = []) {
-            let listenerMap = this.listeners.get(value.uuid);
-            if (!listenerMap) {
-                listenerMap = new Map();
-                this.listeners.set(value.uuid, listenerMap);
+        listen(callback: (root: Value, value: Value, other: any)=>void, filter: (value: Value)=>boolean, root: Value) {
+            if (!this.values.has(root.uuid)) {
+                throw new Error("trying to listen to object not in the environment")
             }
-            if (listenerMap.has(listener)) {
-                // cycle detected, do nothing?
-            } else {
-                listenerMap.set(listener, existingPath);
-                traverse(value.serialRepresentation, (a, path) => {
-                    if (a.kind === "value-reference") {
-                        const referencedValue = this.fromReference(a);
-                        this.listen(referencedValue, listener, path);
-                        return false;
-                    }
-                    return true;
-                }, existingPath);
-            }
+            const listener = new Listener(callback, filter, root)
+            this.listeners.add(listener)
+            this.addDepencies(listener)
         }
     }
 
@@ -101,6 +157,9 @@ export namespace Value {
      * A generic typed value
      */
     export abstract class Value {
+        dependencyParents = new Set<Value>();
+        dependencyChildren = new Set<Value>();
+
         /**
          * A unique way to reference this object
          */
@@ -127,6 +186,12 @@ export namespace Value {
             readonly environment: Environment) {
 
         }
+
+        /**
+         * Get the relative path to the given value
+         * @param value The `Value` to get the path for
+         */
+        abstract pathElement(value: Value): any;
 
         /**
          * Subclasses can override this if the can determine equality more easily.
@@ -161,10 +226,10 @@ export namespace Value {
         // might not support cycles?
     }
     export function dependecies(v: Value) {
-        const deps: string[] = [];
+        const deps: Value[] = [];
         traverse(v.serialRepresentation, (a) => {
             if (typeof (a) === "object" && a.kind === "value-reference") {
-                deps.push(a.uuid);
+                deps.push(v.environment.fromReference(a));
                 return false;
             }
             return true;
@@ -202,6 +267,10 @@ export namespace Value {
                 this._value = false;
             }
         }
+
+        pathElement(): never {
+            throw new Error("Can't get pathElement: Primitives don't have children")
+        }
     }
 
     @TypeValue(Type.Literal)
@@ -212,6 +281,10 @@ export namespace Value {
         constructor(type: Type.Literal, environment: Environment) {
             super(type, environment);
             this.value = this.serialRepresentation = type.value;
+        }
+
+        pathElement(): never {
+            throw new Error("Can't get pathElement: Primitives don't have children")
         }
     }
 
@@ -241,6 +314,7 @@ export namespace Value {
                 if (!assignRecords(v, t[k])) {
                     const oldValue = t[k];
                     t[k] = v;
+                    this.environment.add(v);
                     this.environment.valueChanged(this, { key: k, from: oldValue, to: v });
                     this.environment.add(v);
                 }
@@ -274,6 +348,15 @@ export namespace Value {
                 const value = this.environment.make(valueType);
                 this.value[key] = value;
             }
+        }
+
+        pathElement(value: Value) {
+            for (const key in this.value) {
+                if (this.value[key].deepEqual(value)) {
+                    return key;
+                }
+            }
+            throw new Error(`can't find pathElement: the given value is not a child of this Record`)
         }
     }
 
@@ -347,6 +430,11 @@ export namespace Value {
                 return this.underlying[n];
             }
         }
+
+        pathElement(value: Value) {
+            return value;
+        }
+
     }
 
     export class MapType implements Type.Type {
@@ -410,6 +498,18 @@ export namespace Value {
                 this.environment.valueChanged(this, { key: k, from: existingValue, to: v });
             }
         }
+
+        pathElement(value: Value) {
+            if (this.underlying.has(value)) {
+                return {key: value};
+            }
+            for (const [key, memberValue] of this.underlying) {
+                if (memberValue.deepEqual(value)) {
+                    return {value: memberValue, matchingKey: key};
+                }
+            }
+            throw new Error("value not a member")
+        }
     }
 
     // TODO: find a way to support `subtype` on this
@@ -462,6 +562,11 @@ export namespace Value {
             this.environment.valueChanged(this, { delete: v });
             return result;
         }
+
+        pathElement(value: Value) {
+            return value;
+        }
+
     }
 
     @TypeValue(Type.CustomObject)
@@ -489,6 +594,7 @@ export namespace Value {
                 if (!returnValue || !Type.isSubtype(returnValue.type, method.returnType)) {
                     throw new Error("returned incompatible value");
                 }
+                this.environment.add(returnValue);
                 return returnValue;
             }
         }
@@ -508,8 +614,18 @@ export namespace Value {
             const oldValue = this.simpleRepresentation[name];
             if (!assignRecords(value, this.simpleRepresentation[name])) {
                 this.simpleRepresentation[name] = value;
+                this.environment.add(value);
                 this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
             }
+        }
+
+        pathElement(value: Value) {
+            for (const key of this.type.members.keys()) {
+                if (this.simpleRepresentation[key].deepEqual(value)) {
+                    return key;
+                }
+            }
+            throw new Error("pathElement: value not found on custom object")
         }
     }
 }

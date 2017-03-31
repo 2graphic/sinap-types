@@ -3,6 +3,7 @@
 import { expect } from "chai";
 import { Type } from ".";
 import { Value } from ".";
+import { deepCopy } from "./util";
 
 describe("Tutorial", () => {
     describe("Literals and Primitives", () => {
@@ -173,6 +174,8 @@ describe("Tutorial", () => {
 
             const r1_a = new Value.Record(trec1, env);
             const r1_b = new Value.Record(trec1, env);
+            env.add(r1_a)
+            env.add(r1_b)
 
             r1_a.value.a = n1_a;
             r1_b.value.a = n1_b;
@@ -210,12 +213,14 @@ describe("Tutorial", () => {
         it("Records", (done) => {
             const env = new Value.Environment();
             const r = new Value.Record(trec3, env);
+            env.add(r);
 
-            env.listen(r, (p, c) => {
-                expect(p).to.deep.equal(["c", "b", "a"]);
-                expect(c).to.deep.equal({ from: 0, to: 7 });
+            env.listen((root, value, other) => {
+                expect(root).to.equal(r);
+                expect(value).to.equal(p);
+                expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            });
+            }, ()=>true, r);
 
             const r2 = r.value.c as Value.Record;
             const r3 = r2.value.b as Value.Record;
@@ -228,12 +233,16 @@ describe("Tutorial", () => {
         it("records squash", (done) => {
             const env = new Value.Environment();
             const r = new Value.Record(trec3, env);
+            env.add(r);
 
-            env.listen(r, (p, c) => {
-                expect(p).to.deep.equal(["c", "b", "a"]);
-                expect(c).to.deep.equal({ from: 0, to: 7 });
+            const rOrginalChild = (r.value as any).c.value.b.value.a as Value.Record;
+
+            env.listen((root, value, other) => {
+                expect(root).to.equal(r);
+                expect(value).to.equal(rOrginalChild);
+                expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            });
+            }, ()=>true, r);
 
             const r2 = new Value.Record(trec2, env);
             const r1 = r2.value.b as Value.Record;
@@ -249,17 +258,19 @@ describe("Tutorial", () => {
             const m = new Value.MapObject(new Value.MapType(tnumber, tnumber), env);
             const n1 = new Value.Primitive(new Type.Primitive("number"), env, 1);
             const n17 = new Value.Primitive(new Type.Primitive("number"), env, 17);
+            env.add(m);
 
-            env.listen(m, (p, c) => {
-                expect(p).to.deep.equal([]);
-
-                expect(c).to.deep.equal({
-                    key: n1,
-                    from: undefined, // old value
-                    to: n17 // new value
-                });
+            env.listen((root, value, other) => {
+                expect(root).to.equal(m);
+                expect(value).to.equal(m);
+                expect(deepCopy(other, (a) => {
+                    if (a instanceof Value.Primitive) {
+                        return { replace: true, value: a.value };
+                    }
+                    return { replace: false };
+                })).to.deep.equal({ from: undefined, key: 1, to: 17 });
                 done();
-            });
+            }, ()=>true, m);
 
             m.set(n1, n17);
         });
@@ -269,16 +280,16 @@ describe("Tutorial", () => {
             const m = new Value.MapObject(new Value.MapType(tnumber, tnumber), env);
             const n1 = new Value.Primitive(new Type.Primitive("number"), env, 1);
             const n17 = new Value.Primitive(new Type.Primitive("number"), env, 17);
+            env.add(m);
 
             m.set(n1, n17);
 
-            env.listen(m, (p, c) => {
-                // TODO: path through maps weird
-                // @Daniel, thoughts?
-                expect(p).to.deep.equal(["entries", "0", "1"]);
-                expect(c).to.deep.equal({ from: 17, to: 14 });
+            env.listen((root, value, other) => {
+                expect(root).to.equal(m);
+                expect(value).to.equal(n17);
+                expect(other).to.deep.equal({ from: 17, to: 14 });
                 done();
-            });
+            }, ()=>true, m);
 
             n17.value = 14;
         });

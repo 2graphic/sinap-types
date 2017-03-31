@@ -8,16 +8,28 @@ import { deepCopy } from "./util";
 describe("Values", () => {
     it("deps", () => {
         const env = new Value.Environment();
-        const deps = Value.dependecies({
+        const n1 = new Value.Primitive(new Type.Primitive("number"), env, 1);
+        const n10 = new Value.Primitive(new Type.Primitive("number"), env, 10);
+
+        env.add(n1);
+        env.add(n10);
+
+        const value: Value.Value = {
             uuid: "1",
             environment: env,
+            dependencyParents: new Set(),
+            dependencyChildren: new Set(),
+            context: {},
+            pathElement: ()=>{throw new Error()},
             deepEqual: () => false,
             type: new Type.Literal(1),
             serialRepresentation: [
-                { kind: "value-reference", uuid: "123" },
-                { k: { v: { kind: "value-reference", uuid: "2883" } } }]
-        });
-        expect(deps).to.deep.equal(["123", "2883"]);
+                env.toReference(n1),
+                { k: { v: env.toReference(n10) } }]
+        };
+        env.add(value);
+        const deps = Value.dependecies(value);
+        expect(deps).to.deep.equal([n1, n10]);
     });
 
     describe("literals and primitives", () => {
@@ -81,7 +93,9 @@ describe("Values", () => {
                         }
                     }]
                 ]));
+
                 const a = new Value.CustomObject(tA, env);
+                env.add(a);
                 const prim = new Value.Primitive(tnumber, env, 17);
                 a.call("func", prim);
 
@@ -216,42 +230,48 @@ describe("Values", () => {
     });
 
     describe("listeners", () => {
-        const tnumber = new Type.Primitive("number"), tstring = new Type.Primitive("string");
+        const tnumber = new Type.Primitive("number");
         const trec1 = new Type.Record("rec1", new Map([["a", tnumber]]));
         const trec2 = new Type.Record("rec2", new Map([["b", trec1]]));
         const trec3 = new Type.Record("rec3", new Map([["c", trec2]]));
         it("primitives", (done) => {
             const env = new Value.Environment();
             const n1 = new Value.Primitive(tnumber, env, 17);
-            env.listen(n1, (p, c) => {
-                expect(p).to.deep.equal([]);
-                expect(c).to.deep.equal({ from: 17, to: 7 });
+            env.add(n1);
+            env.listen((root, value, other) => {
+                expect(root).to.equal(n1);
+                expect(value).to.equal(n1);
+                expect(other).to.deep.equal({ from: 17, to: 7 });
                 done();
-            });
+            }, ()=>true, n1);
             n1.value = 7;
         });
 
         it("records", (done) => {
             const env = new Value.Environment();
             const r1 = new Value.Record(trec1, env);
+            env.add(r1);
 
-            env.listen(r1, (p, c) => {
-                expect(p).to.deep.equal(["a"]);
-                expect(c).to.deep.equal({ from: 0, to: 7 });
+            env.listen((root, value, other) => {
+                expect(root).to.equal(r1);
+                expect(value).to.equal(r1.value.a);
+                expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            });
+            }, ()=>true, r1);
             (r1.value.a as Value.Primitive).value = 7;
         });
 
         it("records (deep)", (done) => {
             const env = new Value.Environment();
             const r = new Value.Record(trec3, env);
+            env.add(r);
 
-            env.listen(r, (p, c) => {
-                expect(p).to.deep.equal(["c", "b", "a"]);
-                expect(c).to.deep.equal({ from: 0, to: 7 });
+            env.listen((root, value, other) => {
+                expect(root).to.equal(r);
+                expect(value).to.equal(p);
+                expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            });
+            }, ()=>true, r);
 
             const r2 = r.value.c as Value.Record;
             const r3 = r2.value.b as Value.Record;
@@ -263,12 +283,16 @@ describe("Values", () => {
         it("records squash", (done) => {
             const env = new Value.Environment();
             const r = new Value.Record(trec3, env);
+            env.add(r);
 
-            env.listen(r, (p, c) => {
-                expect(p).to.deep.equal(["c", "b", "a"]);
-                expect(c).to.deep.equal({ from: 0, to: 7 });
+            const rOrginalChild = (r.value as any).c.value.b.value.a as Value.Record;
+
+            env.listen((root, value, other) => {
+                expect(root).to.equal(r);
+                expect(value).to.equal(rOrginalChild);
+                expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            });
+            }, ()=>true, r);
 
             const r2 = new Value.Record(trec2, env);
             const r1 = r2.value.b as Value.Record;
@@ -281,17 +305,19 @@ describe("Values", () => {
             const m = new Value.MapObject(new Value.MapType(tnumber, tnumber), env);
             const n1 = new Value.Primitive(new Type.Primitive("number"), env, 1);
             const n17 = new Value.Primitive(new Type.Primitive("number"), env, 17);
+            env.add(m);
 
-            env.listen(m, (p, c) => {
-                expect(p).to.deep.equal([]);
-                expect(deepCopy(c, (a) => {
+            env.listen((root, value, other) => {
+                expect(root).to.equal(m);
+                expect(value).to.equal(m);
+                expect(deepCopy(other, (a) => {
                     if (a instanceof Value.Primitive) {
                         return { replace: true, value: a.value };
                     }
                     return { replace: false };
                 })).to.deep.equal({ from: undefined, key: 1, to: 17 });
                 done();
-            });
+            }, ()=>true, m);
 
             m.set(n1, n17);
         });
@@ -301,15 +327,16 @@ describe("Values", () => {
             const m = new Value.MapObject(new Value.MapType(tnumber, tnumber), env);
             const n1 = new Value.Primitive(new Type.Primitive("number"), env, 1);
             const n17 = new Value.Primitive(new Type.Primitive("number"), env, 17);
+            env.add(m);
 
             m.set(n1, n17);
 
-            env.listen(m, (p, c) => {
-                // TODO: path through maps weird
-                expect(p).to.deep.equal(["entries", "0", "1"]);
-                expect(c).to.deep.equal({ from: 17, to: 14 });
+            env.listen((root, value, other) => {
+                expect(root).to.equal(m);
+                expect(value).to.equal(n17);
+                expect(other).to.deep.equal({ from: 17, to: 14 });
                 done();
-            });
+            }, ()=>true, m);
 
             n17.value = 14;
         });

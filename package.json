@@ -1,6 +1,9 @@
 {
   "scripts": {
-    "format": "tsfmt -r && tslint --fix --project ."
+    "format": "tsfmt -r && tslint --fix --project .",
+    "build": "tsc -p .",
+    "test:nobuild": "mocha --colors lib/test-*.js",
+    "test": "npm run build && npm run test:nobuild"
   },
   "devDependencies": {
     "@types/node": "^7.0.12",
