@@ -3,7 +3,6 @@
 import { expect } from "chai";
 import { Type } from ".";
 import { Value } from ".";
-import { deepCopy } from "./util";
 
 describe("Values", () => {
     it("deps", () => {
@@ -432,7 +431,6 @@ describe("Values", () => {
             // this should not update, n4 is no longer in any way associated with m3
             nB.value = 8;           // no-change
             nA.value = 0;           // 13
-
             m3_c.set(nA, nA);       // no-change
             m2_b.set(nA, m3_c);     // no-change
             m1.set(nA, m2_b);       // 14

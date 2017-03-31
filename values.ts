@@ -384,7 +384,9 @@ export namespace Value {
 
     export class ArrayType implements Type.Type {
         name = "Array";
-        typeParameter: Type.Type;
+        constructor(readonly typeParameter: Type.Type) {
+
+        }
 
         equals(that: Type.Type): boolean {
             return that instanceof ArrayType && this.typeParameter === that.typeParameter;
@@ -434,6 +436,10 @@ export namespace Value {
             } else {
                 return this.underlying[n];
             }
+        }
+
+        [Symbol.iterator]() {
+            return this.underlying[Symbol.iterator]();
         }
 
         pathElement(value: Value) {
