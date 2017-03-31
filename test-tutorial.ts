@@ -174,8 +174,8 @@ describe("Tutorial", () => {
 
             const r1_a = new Value.Record(trec1, env);
             const r1_b = new Value.Record(trec1, env);
-            env.add(r1_a)
-            env.add(r1_b)
+            env.add(r1_a);
+            env.add(r1_b);
 
             r1_a.value.a = n1_a;
             r1_b.value.a = n1_b;
@@ -220,7 +220,7 @@ describe("Tutorial", () => {
                 expect(value).to.equal(p);
                 expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            }, ()=>true, r);
+            }, () => true, r);
 
             const r2 = r.value.c as Value.Record;
             const r3 = r2.value.b as Value.Record;
@@ -242,7 +242,7 @@ describe("Tutorial", () => {
                 expect(value).to.equal(rOrginalChild);
                 expect(other).to.deep.equal({ from: 0, to: 7 });
                 done();
-            }, ()=>true, r);
+            }, () => true, r);
 
             const r2 = new Value.Record(trec2, env);
             const r1 = r2.value.b as Value.Record;
@@ -270,7 +270,7 @@ describe("Tutorial", () => {
                     return { replace: false };
                 })).to.deep.equal({ from: undefined, key: 1, to: 17 });
                 done();
-            }, ()=>true, m);
+            }, () => true, m);
 
             m.set(n1, n17);
         });
@@ -289,7 +289,7 @@ describe("Tutorial", () => {
                 expect(value).to.equal(n17);
                 expect(other).to.deep.equal({ from: 17, to: 14 });
                 done();
-            }, ()=>true, m);
+            }, () => true, m);
 
             n17.value = 14;
         });

@@ -20,7 +20,10 @@
             "outFiles": [
                 "${workspaceRoot}/lib/*"
             ],
-            "internalConsoleOptions": "openOnSessionStart"
+            "internalConsoleOptions": "openOnSessionStart",
+            "skipFiles": [
+                "${workspaceRoot}/node_modules/mocha/lib/*.js"
+            ]
         }
     ]
 }

@@ -10,13 +10,13 @@ export namespace Value {
 
     class Listener {
         constructor(
-            readonly callback: (root: Value, value: Value, other: any)=>void,
-            readonly filter: (value: Value)=>boolean,
+            readonly callback: (root: Value, value: Value, other: any) => void,
+            readonly filter: (value: Value) => boolean,
             readonly root: Value,
-        ) {}
+        ) { }
     }
 
-    function traverseDeps(root: Value, visit: (v: Value)=>boolean) {
+    function traverseDeps(root: Value, visit: (v: Value) => boolean) {
         if (!visit(root)) {
             return;
         }
@@ -65,8 +65,8 @@ export namespace Value {
         }
 
         private updateDependencies(value: Value, oldDeps: Set<Value>, newDeps: Set<Value>) {
-            const removedDependecies = [...oldDeps].filter(x=>!newDeps.has(x));
-            const addedDependecies = [...newDeps].filter(x=>!oldDeps.has(x));
+            const removedDependecies = [...oldDeps].filter(x => !newDeps.has(x));
+            const addedDependecies = [...newDeps].filter(x => !oldDeps.has(x));
 
             for (const dep of removedDependecies) {
                 dep.dependencyParents.delete(value);
@@ -81,12 +81,12 @@ export namespace Value {
         }
 
         private addDepencies(listener: Listener) {
-            traverseDeps(listener.root, (v)=>{
+            traverseDeps(listener.root, (v) => {
                 if (!listener.filter(v)) {
                     return false;
                 }
                 if (!this.values.has(v.uuid)) {
-                    new Error("while traversing dependencies, a Value was found that was not in the environment")
+                    new Error("while traversing dependencies, a Value was found that was not in the environment");
                 }
                 let pool = this.listenersForValue.get(v);
                 if (pool) {
@@ -100,7 +100,7 @@ export namespace Value {
                 }
                 pool.add(listener);
                 return true;
-            })
+            });
         }
 
         private rebuildDependencyMaps() {
@@ -112,7 +112,7 @@ export namespace Value {
 
         valueChanged(value: Value, change: any) {
             const newDeps = new Set(dependecies(value));
-            if (! setEquivalent(newDeps, value.dependencyChildren)) {
+            if (!setEquivalent(newDeps, value.dependencyChildren)) {
                 this.updateDependencies(value, value.dependencyChildren, newDeps);
             }
 
@@ -127,13 +127,13 @@ export namespace Value {
         private listenersForValue = new Map<Value, Set<Listener>>();
         private listeners: Set<Listener> = new Set();
 
-        listen(callback: (root: Value, value: Value, other: any)=>void, filter: (value: Value)=>boolean, root: Value) {
+        listen(callback: (root: Value, value: Value, other: any) => void, filter: (value: Value) => boolean, root: Value) {
             if (!this.values.has(root.uuid)) {
-                throw new Error("trying to listen to object not in the environment")
+                throw new Error("trying to listen to object not in the environment");
             }
-            const listener = new Listener(callback, filter, root)
-            this.listeners.add(listener)
-            this.addDepencies(listener)
+            const listener = new Listener(callback, filter, root);
+            this.listeners.add(listener);
+            this.addDepencies(listener);
         }
     }
 
@@ -269,7 +269,7 @@ export namespace Value {
         }
 
         pathElement(): never {
-            throw new Error("Can't get pathElement: Primitives don't have children")
+            throw new Error("Can't get pathElement: Primitives don't have children");
         }
     }
 
@@ -284,7 +284,7 @@ export namespace Value {
         }
 
         pathElement(): never {
-            throw new Error("Can't get pathElement: Primitives don't have children")
+            throw new Error("Can't get pathElement: Primitives don't have children");
         }
     }
 
@@ -356,7 +356,7 @@ export namespace Value {
                     return key;
                 }
             }
-            throw new Error(`can't find pathElement: the given value is not a child of this Record`)
+            throw new Error(`can't find pathElement: the given value is not a child of this Record`);
         }
     }
 
@@ -388,6 +388,11 @@ export namespace Value {
 
         equals(that: Type.Type): boolean {
             return that instanceof ArrayType && this.typeParameter === that.typeParameter;
+        }
+
+        isSubtype(that: Type.Type): boolean {
+            return (that instanceof ArrayType
+                && Type.isSubtype(this.typeParameter, that.typeParameter));
         }
     }
 
@@ -447,6 +452,12 @@ export namespace Value {
         equals(that: Type.Type): boolean {
             return that instanceof MapType && this.keyType === that.keyType && this.valueType === that.valueType;
         }
+
+        isSubtype(that: Type.Type): boolean {
+            return (that instanceof MapType
+                && Type.isSubtype(this.keyType, that.keyType)
+                && Type.isSubtype(this.valueType, that.valueType));
+        }
     }
 
 
@@ -501,24 +512,28 @@ export namespace Value {
 
         pathElement(value: Value) {
             if (this.underlying.has(value)) {
-                return {key: value};
+                return { key: value };
             }
             for (const [key, memberValue] of this.underlying) {
                 if (memberValue.deepEqual(value)) {
-                    return {value: memberValue, matchingKey: key};
+                    return { value: memberValue, matchingKey: key };
                 }
             }
-            throw new Error("value not a member")
+            throw new Error("value not a member");
         }
     }
 
-    // TODO: find a way to support `subtype` on this
     export class SetType implements Type.Type {
         name = "Set";
         typeParameter: Type.Type;
 
         equals(that: Type.Type): boolean {
             return that instanceof SetType && this.typeParameter === that.typeParameter;
+        }
+
+        isSubtype(that: Type.Type): boolean {
+            return (that instanceof SetType
+                && Type.isSubtype(this.typeParameter, that.typeParameter));
         }
     }
 
@@ -625,7 +640,7 @@ export namespace Value {
                     return key;
                 }
             }
-            throw new Error("pathElement: value not found on custom object")
+            throw new Error("pathElement: value not found on custom object");
         }
     }
 }

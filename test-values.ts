@@ -20,7 +20,7 @@ describe("Values", () => {
             dependencyParents: new Set(),
             dependencyChildren: new Set(),
             context: {},
-            pathElement: ()=>{throw new Error()},
+            pathElement: () => { throw new Error(); },
             deepEqual: () => false,
             type: new Type.Literal(1),
             serialRepresentation: [
@@ -230,6 +230,28 @@ describe("Values", () => {
     });
 
     describe("listeners", () => {
+        function listenForTheseChanges(env: Value.Environment, listenRoot: Value.Value, done: () => void, changesExpected: [Value.Value, any][]) {
+            // set up a listener
+            let stepNumber = 0;
+            env.listen((root, value, other) => {
+                const specificChanges = changesExpected.shift();
+                if (!specificChanges) {
+                    throw new Error("got unexpected changes");
+                }
+
+                const [vExpected, oExpected] = specificChanges;
+
+                expect(root).to.equal(listenRoot, `Roots match up. Step number ${stepNumber}`);
+                expect(value).to.equal(vExpected, `Values match up. Step number ${stepNumber}`);
+                expect(other).to.deep.equal(oExpected, `Changes match up. Step number ${stepNumber}`);
+                stepNumber++;
+
+                if (changesExpected.length === 0) {
+                    done();
+                }
+            }, () => true, listenRoot);
+        }
+
         const tnumber = new Type.Primitive("number");
         const trec1 = new Type.Record("rec1", new Map([["a", tnumber]]));
         const trec2 = new Type.Record("rec2", new Map([["b", trec1]]));
@@ -238,12 +260,11 @@ describe("Values", () => {
             const env = new Value.Environment();
             const n1 = new Value.Primitive(tnumber, env, 17);
             env.add(n1);
-            env.listen((root, value, other) => {
-                expect(root).to.equal(n1);
-                expect(value).to.equal(n1);
-                expect(other).to.deep.equal({ from: 17, to: 7 });
-                done();
-            }, ()=>true, n1);
+
+            listenForTheseChanges(env, n1, done, [
+                [n1, { from: 17, to: 7 }],
+            ]);
+
             n1.value = 7;
         });
 
@@ -252,12 +273,10 @@ describe("Values", () => {
             const r1 = new Value.Record(trec1, env);
             env.add(r1);
 
-            env.listen((root, value, other) => {
-                expect(root).to.equal(r1);
-                expect(value).to.equal(r1.value.a);
-                expect(other).to.deep.equal({ from: 0, to: 7 });
-                done();
-            }, ()=>true, r1);
+            listenForTheseChanges(env, r1, done, [
+                [r1.value.a, { from: 0, to: 7 }],
+            ]);
+
             (r1.value.a as Value.Primitive).value = 7;
         });
 
@@ -266,18 +285,42 @@ describe("Values", () => {
             const r = new Value.Record(trec3, env);
             env.add(r);
 
-            env.listen((root, value, other) => {
-                expect(root).to.equal(r);
-                expect(value).to.equal(p);
-                expect(other).to.deep.equal({ from: 0, to: 7 });
-                done();
-            }, ()=>true, r);
-
             const r2 = r.value.c as Value.Record;
             const r3 = r2.value.b as Value.Record;
             const p = r3.value.a as Value.Primitive;
 
+            listenForTheseChanges(env, r, done, [
+                [p, { from: 0, to: 7 }],
+            ]);
+
             p.value = 7;
+        });
+
+        it("untracks correctly", (done) => {
+            const env = new Value.Environment();
+            const m = new Value.MapObject(new Value.MapType(tnumber, tnumber), env);
+            const n1 = new Value.Primitive(new Type.Primitive("number"), env, 1);
+            const n17 = new Value.Primitive(new Type.Primitive("number"), env, 17);
+            const n18 = new Value.Primitive(new Type.Primitive("number"), env, 18);
+            env.add(m);
+
+            // have n17 as a dependency
+            m.set(n1, n17);
+
+            // set up a listener
+            listenForTheseChanges(env, m, done, [
+                [m, { from: n17, to: n18, key: n1 }],
+                [n18, { from: 18, to: 3 }],
+            ]);
+
+            // remove n17 as a dep and add n18
+            m.set(n1, n18);
+
+            // update n17, this should not notify
+            n17.value = 14;
+
+            // update n18, this should notify
+            n18.value = 3;
         });
 
         it("records squash", (done) => {
@@ -287,12 +330,9 @@ describe("Values", () => {
 
             const rOrginalChild = (r.value as any).c.value.b.value.a as Value.Record;
 
-            env.listen((root, value, other) => {
-                expect(root).to.equal(r);
-                expect(value).to.equal(rOrginalChild);
-                expect(other).to.deep.equal({ from: 0, to: 7 });
-                done();
-            }, ()=>true, r);
+            listenForTheseChanges(env, r, done, [
+                [rOrginalChild, { from: 0, to: 7 }],
+            ]);
 
             const r2 = new Value.Record(trec2, env);
             const r1 = r2.value.b as Value.Record;
@@ -307,17 +347,9 @@ describe("Values", () => {
             const n17 = new Value.Primitive(new Type.Primitive("number"), env, 17);
             env.add(m);
 
-            env.listen((root, value, other) => {
-                expect(root).to.equal(m);
-                expect(value).to.equal(m);
-                expect(deepCopy(other, (a) => {
-                    if (a instanceof Value.Primitive) {
-                        return { replace: true, value: a.value };
-                    }
-                    return { replace: false };
-                })).to.deep.equal({ from: undefined, key: 1, to: 17 });
-                done();
-            }, ()=>true, m);
+            listenForTheseChanges(env, m, done, [
+                [m, { from: undefined, key: n1, to: n17 }],
+            ]);
 
             m.set(n1, n17);
         });
@@ -331,14 +363,83 @@ describe("Values", () => {
 
             m.set(n1, n17);
 
-            env.listen((root, value, other) => {
-                expect(root).to.equal(m);
-                expect(value).to.equal(n17);
-                expect(other).to.deep.equal({ from: 17, to: 14 });
-                done();
-            }, ()=>true, m);
+            listenForTheseChanges(env, m, done, [
+                [n17, { from: 17, to: 14 }],
+            ]);
 
             n17.value = 14;
+        });
+
+        it("untracks deep", (done) => {
+            // be careful when editing this test
+            // it is designed to much around with the internals of
+            // the way tracking works at a fairly deep level (mutliple levels
+            // of indirection) with the premise that optimizations
+            // to the the change deptector might break some of these cases
+
+            const env = new Value.Environment();
+            const tm3 = new Value.MapType(tnumber, tnumber);
+            const tm2 = new Value.MapType(tnumber, tm3);
+            const tm1 = new Value.MapType(tnumber, tm2);
+
+            const m1 = new Value.MapObject(tm1, env);
+            const m2_a = new Value.MapObject(tm2, env);
+            const m2_b = new Value.MapObject(tm2, env);
+            const m3_a = new Value.MapObject(tm3, env);
+            const m3_b = new Value.MapObject(tm3, env);
+            const m3_c = new Value.MapObject(tm3, env);
+            const nA = new Value.Primitive(new Type.Primitive("number"), env, 1);
+            const nB = new Value.Primitive(new Type.Primitive("number"), env, 4);
+            const nC = new Value.Primitive(new Type.Primitive("number"), env, 17);
+            const nD = new Value.Primitive(new Type.Primitive("number"), env, 18);
+            env.add(m1);
+
+            listenForTheseChanges(env, m1, done, [
+                [m1, { from: undefined, to: m2_a, key: nA }],   // 0
+                [m2_a, { from: undefined, to: m3_a, key: nC }], // 1
+                [m3_a, { from: undefined, to: nA, key: nD }],   // 2
+                [nA, { from: 1, to: 2 }],                       // 3
+                [m3_a, { from: nA, to: nC, key: nD }],          // 4
+                [nA, { from: 2, to: 3 }],                       // 5
+                [m3_a, { from: nC, to: nB, key: nD }],          // 6
+                [nB, { from: 4, to: 5 }],                       // 7
+                [m3_a, { from: nB, to: nA, key: nD }],          // 8
+                [nA, { from: 3, to: 1 }],                       // 9
+                [m3_a, { from: nA, to: nB, key: nD }],          // 10
+                [nB, { from: 6, to: 7 }],                       // 11
+                [m2_a, { from: m3_a, to: m3_b, key: nC }],      // 12
+                [nA, { from: 1, to: 0 }],                       // 13
+                [m1, { from: m2_a, to: m2_b, key: nA }],        // 14
+                [nA, { from: 0, to: 103 }],                     // 15
+            ]);
+
+            m1.set(nA, m2_a);       // 0
+            m2_a.set(nC, m3_a);     // 1
+            m3_a.set(nD, nA);       // 2
+            nA.value = 2;           // 3
+            m3_a.set(nD, nC);       // 4
+            // n1 is still being tracked via the key on m3
+            nA.value = 3;           // 5
+            m3_a.set(nD, nB);       // 6
+            nB.value = 5;           // 7
+            m3_a.set(nD, nA);       // 8
+            // this should not update, n4 is no longer in any way associated with m3
+            nB.value = 6;           // no-change
+            nA.value = 1;           // 9
+            m3_a.set(nD, nB);       // 10
+            nB.value = 7;           // 11
+            m2_a.set(nC, m3_b);     // 12
+            // this should not update, n4 is no longer in any way associated with m3
+            nB.value = 8;           // no-change
+            nA.value = 0;           // 13
+
+            m3_c.set(nA, nA);       // no-change
+            m2_b.set(nA, m3_c);     // no-change
+            m1.set(nA, m2_b);       // 14
+            nB.value = 100;         // no-change
+            nC.value = 101;         // no-change
+            nD.value = 102;         // no-change
+            nA.value = 103;         // 15
         });
     });
 });

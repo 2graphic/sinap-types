@@ -6,6 +6,7 @@ export namespace Type {
     export interface Type {
         readonly name: string;
         equals(other: Type): boolean;
+        isSubtype?(other: Type): boolean;
     }
 
     export type PrimitiveTS = string | number | boolean;
@@ -55,28 +56,8 @@ export namespace Type {
                 }
                 return false;
             }
-        } else if (a instanceof Primitive) {
-            return a.equals(b);
-        } else if (a instanceof Literal) {
-            if (b instanceof Primitive) {
-                return isSubtype(a.superType, b);
-            } else {
-                return a.equals(b);
-            }
-        } else if (a instanceof Record) {
-            if (b instanceof Record) {
-                return mapEquivalent(a.members, b.members, (a, b) => isSubtype(a, b));
-            } else {
-                return false;
-            }
-        } else if (a instanceof CustomObject) {
-            if (a.equals(b)) {
-                return true;
-            } else if (a.superType) {
-                return isSubtype(a.superType, b);
-            } else {
-                return false;
-            }
+        } else if (a.isSubtype) {
+            return a.isSubtype(b);
         } else if (a instanceof Union) {
             for (const t of a.types) {
                 if (!isSubtype(t, b)) {
@@ -104,6 +85,10 @@ export namespace Type {
         equals(that: Type): boolean {
             return that instanceof Primitive && this.name === that.name;
         }
+
+        isSubtype(that: Type) {
+            return this.equals(that);
+        }
     }
 
     export class Literal implements Type {
@@ -126,6 +111,14 @@ export namespace Type {
 
         equals(that: Type): boolean {
             return that instanceof Literal && this.value === that.value;
+        }
+
+        isSubtype(that: Type) {
+            if (that instanceof Primitive) {
+                return isSubtype(this.superType, that);
+            } else {
+                return this.equals(that);
+            }
         }
     }
 
@@ -168,6 +161,14 @@ export namespace Type {
                 && this.name === that.name
                 && mapEquivalent(this.members, that.members, (a, b) => a.equals(b));
         }
+
+        isSubtype(that: Type): boolean {
+            if (that instanceof Record) {
+                return mapEquivalent(this.members, that.members, (a, b) => isSubtype(a, b));
+            } else {
+                return false;
+            }
+        }
     }
 
     export class CustomObject implements Type, RecordLike {
@@ -190,6 +191,15 @@ export namespace Type {
 
         equals(that: Type): boolean {
             return this === that;
+        }
+        isSubtype(that: Type): boolean {
+            if (this.equals(that)) {
+                return true;
+            } else if (this.superType) {
+                return isSubtype(this.superType, that);
+            } else {
+                return false;
+            }
         }
     }
 
