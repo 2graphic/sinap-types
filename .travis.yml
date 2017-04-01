@@ -1,0 +1,19 @@
+language: node_js
+cache:
+  directories:
+  - node_modules
+notifications:
+  email: false
+  slack:
+    secure: G6MnB7zAHSwd41LQygwXdR09hYrDPfrjDwi0DsHfgeLJWR+e9sGtflUNZBYRx9WfZca1m4g3ntTROscDFvVw7gBtPkW+ipJz5le5JLL2w/sWQMRUXDot8k8zDcOdk0F4zrXVamXQCkPi8vU3/Fb8lrmfy8aBHHjTvmmMy7b2LphISmoYMBJ9q4bzD/bVlwBwLWlIoPb7QPytEeXGD+szUCvwWlPx2t2u5uynGCv4AK2eLok1luouoGGQuNSiKxwR/JJmfaIUmW7QEqf8JnJ0OUC52HuJ7C5zmjjgiK9OGN4ki9i2GNM9gS92CCXwpWqU/exoPqNdnZUQq7mgEiW0Rt2PH9Z2hJbRFgPYbeydeT78gqlsPphmXbIwJKuBbeZoco5EwX88cBGH287UvVLhWWeUvrq5enHHDjXZAV6soyHqK0aDU4l5X1b6yC3Hg6YHFuWDtt/pgpOOFB/+4ErSzVS6ZFZOxvSN8VAPc9O2Gcm6txjTg40tJbmWcr9Z/HicFWqAcRhhlv9OQqKFZjg+s2XUd/kZmNN+dJ/MY3Cfun443PrwuehHGzslFNRqTvXx1SRRcXVsBokwyeAn1XGWabcvnXpVIMaPfvQlz/tXL8UeDYQ+IGFIcGHhF+wJZnGysc14mfze0E7Wb5E4Dvwmy2bRbiSf7m9/BIphBtamh1A=
+node_js:
+- '7'
+- '6'
+before_script:
+- npm prune
+script:
+- npm run lint
+- npm test
+branches:
+  except:
+  - "/^v\\d+\\.\\d+\\.\\d+$/"
