@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://github.com/2graphic/sinap-core"
   },
+  "files": [
+    "lib/!(test-)*"
+  ],
   "scripts": {
     "format": "tsfmt -r && tslint --fix --project .",
     "lint": "tsfmt --verify && tslint --project .",
