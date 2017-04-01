@@ -18,7 +18,7 @@
     "test:nobuild": "mocha --colors lib/test-*.js",
     "test": "npm run build && npm run test:nobuild",
     "typings": "typings install",
-    "prepublish": "npm run typings"
+    "prepublish": "npm run typings && npm run lint && npm run test"
   },
   "devDependencies": {
     "@types/node": "^7.0.12",
