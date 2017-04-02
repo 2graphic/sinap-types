@@ -417,6 +417,7 @@ export namespace Value {
         }
 
         push(v: Value) {
+            this.environment.add(v);
             const index = this.underlying.push(v);
             this.environment.valueChanged(this, { push: v });
             return index;
@@ -650,7 +651,7 @@ export namespace Value {
             }
         }
 
-        get(key: string) {
+        get(key: string): Value {
             return CustomObject.prototype.get.call(this, key);
         }
 
