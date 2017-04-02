@@ -1,5 +1,3 @@
-/// <reference path="typings/index.d.ts" />
-
 import { Type } from "./types";
 import { traverse, deepCopy, deepEqual, setEquivalent } from "./util";
 import { v4 as uuid } from "uuid";
