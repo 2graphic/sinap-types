@@ -83,6 +83,8 @@ describe("Values", () => {
                 foo: env.toReference(n15),
                 bar: env.toReference(n16),
             });
+
+            expect(v.get("foo")).to.equal(n15);
         });
 
         it("Call methods", () => {

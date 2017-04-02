@@ -651,7 +651,7 @@ export namespace Value {
         }
 
         get(key: string) {
-            CustomObject.prototype.get.call(this, key);
+            return CustomObject.prototype.get.call(this, key);
         }
 
         set(key: string, value: Value) {
