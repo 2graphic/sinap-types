@@ -311,14 +311,15 @@ export namespace Type {
 
     export function intersectTypes(originalTypes: Iterable<Type>) {
         const typeArray = [...originalTypes];
-        const types = new Set<Type>();
         for (const t1 of typeArray) {
-            const strictSubtypes = typeArray.filter(t2 => !t1.equals(t2) && isSubtype(t2, t1));
-            if (strictSubtypes.length === 0) {
-                // look only the types who don't also have a subtype in the list
-                types.add(t1);
+            for (const t2 of typeArray) {
+                if (Type.isSubtype(t1, t2)) {
+                    typeArray[typeArray.indexOf(t2)] = t1;
+                }
             }
         }
+
+        const types = new Set(typeArray);
 
         const [firstType, ...restTypes] = types;
 
@@ -331,7 +332,7 @@ export namespace Type {
                 return firstType.metaType.intersect(types);
             }
         }
-        throw new Error(`can't intesect types`);
+        throw new Error(`can't intersect types`);
     }
 
     export type TypeType = typeof Literal | typeof Primitive | typeof CustomObject | typeof Intersection | typeof Union | typeof Record;
