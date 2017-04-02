@@ -133,6 +133,31 @@ export namespace Value {
             this.listeners.add(listener);
             this.addDepencies(listener);
         }
+
+        /**
+         * Remove references to all values not reachable from roots
+         * @param roots an iterable of values to start flagging from
+         */
+        garbageCollect(roots: Iterable<Value>) {
+            const seen = new Set<Value>();
+            function traverse(parent: Value) {
+                if (seen.has(parent)) {
+                    return;
+                }
+                seen.add(parent);
+                for (const child of parent.dependencyChildren) {
+                    traverse(child);
+                }
+            }
+            for (const root of roots) {
+                traverse(root);
+            }
+            for (const [key, value] of this.values) {
+                if (!seen.has(value)) {
+                    this.values.delete(key);
+                }
+            }
+        }
     }
 
     type ExtendedMetaType = Type.MetaType | typeof ArrayType | typeof SetType | typeof MapType;
@@ -260,6 +285,10 @@ export namespace Value {
                 this._value = false;
             }
         }
+    }
+
+    export function makePrimitive(env: Environment, value: Type.PrimitiveTS) {
+        return new Primitive(new Type.Primitive(typeof (value) as Type.PrimitiveName), env, value);
     }
 
     @TypeValue(Type.Literal)

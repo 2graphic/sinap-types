@@ -491,4 +491,80 @@ describe("Values", () => {
             nA.value = 103;         // 15
         });
     });
+    describe("garbage collect", () => {
+        it("removes untracked objects", () => {
+            const env = new Value.Environment();
+            const hello = Value.makePrimitive(env, "hello");
+            const world = Value.makePrimitive(env, "world");
+            env.add(hello);
+            env.add(world);
+            expect(env.values.has(hello.uuid)).to.be.true;
+            expect(env.values.has(world.uuid)).to.be.true;
+            env.garbageCollect([hello]);
+            expect(env.values.has(hello.uuid)).to.be.true;
+            expect(env.values.has(world.uuid)).to.be.false;
+        });
+        it("handles recursion", () => {
+            const env = new Value.Environment();
+            const stringType = new Type.Primitive("string");
+            const mapSS = new Value.MapType(stringType, stringType);
+            const mapSmSS = new Value.MapType(stringType, mapSS);
+            const map2 = new Value.MapObject(mapSmSS, env);
+            const map1 = new Value.MapObject(mapSS, env);
+
+            const hello = Value.makePrimitive(env, "hello");
+            const world = Value.makePrimitive(env, "world");
+            const woah = Value.makePrimitive(env, "woah");
+            const nonRefed = Value.makePrimitive(env, "i don't matter?");
+
+            env.add(map1);
+            map1.set(hello, world);
+            env.add(map2);
+            map2.set(woah, map1);
+            env.add(nonRefed);
+
+            function checkPresence(items: Iterable<[Value.Value, boolean]>) {
+                for (const [item, beThere] of items) {
+                    expect(env.values.has(item.uuid)).to.equal(beThere);
+                }
+            }
+
+            const items = new Map<Value.Value, boolean>([
+                [world, true],
+                [hello, true],
+                [woah, true],
+                [map1, true],
+                [map2, true],
+                [nonRefed, true],
+            ]);
+
+            checkPresence(items);
+            env.garbageCollect([map2]);
+            items.set(nonRefed, false);
+            checkPresence(items);
+        });
+        it("handles cycles", () => {
+            const A = new Type.CustomObject("A", null, new Map());
+            const B = new Type.CustomObject("B", null, new Map());
+            const env = new Value.Environment();
+
+            A.members.set("b", B);
+            B.members.set("a", A);
+
+            const a1 = new Value.CustomObject(A, env);
+            const b1 = new Value.CustomObject(B, env);
+
+            env.add(a1);
+            a1.set("b", b1);
+            b1.set("a", a1);
+
+            expect(env.values.has(a1.uuid)).to.be.true;
+            expect(env.values.has(b1.uuid)).to.be.true;
+
+            env.garbageCollect([a1]);
+
+            expect(env.values.has(a1.uuid)).to.be.true;
+            expect(env.values.has(b1.uuid)).to.be.true;
+        });
+    });
 });
