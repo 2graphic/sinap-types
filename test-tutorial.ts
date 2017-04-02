@@ -1,8 +1,7 @@
 /// <reference path="./typings/index.d.ts" />
 
 import { expect } from "chai";
-import { Type } from ".";
-import { Value } from ".";
+import { Type, Value } from ".";
 import { deepCopy } from "./util";
 
 describe("Tutorial", () => {
