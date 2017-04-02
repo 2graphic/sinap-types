@@ -221,5 +221,18 @@ describe("Types", () => {
             expect(inter.members.get("c")).to.equal(tHello);
             expect(inter.members.get("d")).to.equal(tstring);
         });
+        it("recursively intersects CustomObjects", () => {
+            const tnumber = new Type.Primitive("number");
+            const tA = new Type.CustomObject("A", null, new Map([["num1", tnumber]]));
+            const tB = new Type.CustomObject("B", null, new Map([["num2", tnumber]]));
+            const tC = new Type.CustomObject("C", null, new Map([["ab", tA]]));
+            const tD = new Type.CustomObject("D", null, new Map([["ab", tB]]));
+
+            const tInter = new Type.Intersection([tC, tD]);
+
+            expect(tInter.members.get("ab")).to.be.instanceof(Type.Intersection);
+            expect((tInter.members.get("ab") as Type.Intersection).members.get("num1")).to.equal(tnumber);
+            expect((tInter.members.get("ab") as Type.Intersection).members.get("num2")).to.equal(tnumber);
+        });
     });
 });

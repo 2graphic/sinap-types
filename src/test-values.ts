@@ -84,7 +84,7 @@ describe("Values", () => {
                 bar: env.toReference(n16),
             });
         });
-        it("Match keys", () => { });
+
         it("Call methods", () => {
             const env = new Value.Environment();
             const tnumber = new Type.Primitive("number");

@@ -230,10 +230,19 @@ export namespace Type {
             this.types = new Set(types);
             this.name = [...this.types.values()].map(t => t.name).join(" & ");
 
+            const nestedIntersections = new Map<string, Set<(CustomObject | Intersection)>>();
+
             for (const type of this.types) {
                 for (const [key, innerType] of type.members) {
                     const existingType = this.members.get(key);
-                    if (existingType) {
+                    if ((innerType instanceof CustomObject) || (innerType instanceof Intersection)) {
+                        let set = nestedIntersections.get(key);
+                        if (!set) {
+                            set = new Set();
+                            nestedIntersections.set(key, set);
+                        }
+                        set.add(innerType);
+                    } else if (existingType) {
                         if (Type.isSubtype(existingType, innerType)) {
                             // pass, things are already good
                         } else if (Type.isSubtype(innerType, existingType)) {
@@ -245,6 +254,19 @@ export namespace Type {
                         this.members.set(key, innerType);
                     }
                 }
+            }
+            for (const [key, types] of nestedIntersections) {
+                const newTypes = new Set<CustomObject>();
+                for (const type of types) {
+                    if (type instanceof CustomObject) {
+                        newTypes.add(type);
+                    } else {
+                        for (const t of type.types) {
+                            newTypes.add(t);
+                        }
+                    }
+                }
+                this.members.set(key, new Intersection(newTypes));
             }
         }
 
