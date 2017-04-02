@@ -94,12 +94,38 @@ describe("Values", () => {
             const tAArray = new Value.ArrayType(tA);
             const tBArray = new Value.ArrayType(tB);
 
-            const inter = Type.intersectTypes([tAArray, tBArray]) as Value.ArrayType;
+            const inter = Type.intersectTypes([tAArray, tBArray], []) as Value.ArrayType;
 
             expect(inter).to.be.instanceof(Value.ArrayType);
             expect(inter.typeParameter).to.be.instanceof(Type.Intersection);
             const param = inter.typeParameter as Type.Intersection;
             expect(param.equals(new Type.Intersection([tA, tB]))).to.be.true;
+        });
+
+        it("handles mutual dependency", () => {
+            const tA = new Type.CustomObject("A", null, new Map());
+            const tB = new Type.CustomObject("B", null, new Map([["a", tA]]));
+            tA.members.set("b", tB);
+
+            const inter = new Type.Intersection([tA, tB]);
+            expect(inter.members.get("a")).to.equal(tA);
+            expect(inter.members.get("b")).to.equal(tB);
+        });
+
+        it("handles cyclic dependency", () => {
+            const tB1 = new Type.CustomObject("B1", null, new Map());
+            const tB2 = new Type.CustomObject("B2", null, new Map());
+
+            const tA1 = new Type.CustomObject("A1", null, new Map([["bs", new Value.ArrayType(tB1)]]));
+            const tA2 = new Type.CustomObject("A2", null, new Map([["bs", new Value.ArrayType(tB2)]]));
+
+            tB1.members.set("a", tA1);
+            tB2.members.set("a", tA2);
+
+            // this used to infinitely recur
+            const inter = new Type.Intersection([tA1, tA2]);
+
+            expect(((inter.members.get("bs") as Value.ArrayType).typeParameter as Type.Intersection).members.get("a")!.equals(inter)).to.be.true;
         });
 
         it("can call methods", () => {

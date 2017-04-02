@@ -5,7 +5,7 @@ export namespace Type {
 
     export interface MetaType {
         readonly name: string;
-        intersect?(types: Iterable<Type>): Type;
+        intersect?(types: Iterable<Type>, seenBefore: [Set<Type>, Type][]): Type;
     }
     export interface Type {
         readonly name: string;
@@ -270,7 +270,7 @@ export namespace Type {
          *
          * @param types should be an iterable of CustomObject, will throw exception otherwise
          */
-        constructor(types: Iterable<Type>) {
+        constructor(types: Iterable<Type>, mappings: [Set<Type>, Type][] = []) {
             const ts = [...types];
             for (const t of ts) {
                 if (t instanceof CustomObject) {
@@ -299,8 +299,10 @@ export namespace Type {
                     }
                 }
             }
+
             for (const [key, originalTypes] of keyTypes) {
-                this.members.set(key, intersectTypes(originalTypes));
+                const intersected = intersectTypes(originalTypes, mappings);
+                this.members.set(key, intersected);
             }
         }
 
@@ -309,7 +311,7 @@ export namespace Type {
         }
     }
 
-    export function intersectTypes(originalTypes: Iterable<Type>) {
+    export function intersectTypes(originalTypes: Iterable<Type>, mappings: [Set<Type>, Type][]) {
         const typeArray = [...originalTypes];
         for (const t1 of typeArray) {
             for (const t2 of typeArray) {
@@ -320,6 +322,11 @@ export namespace Type {
         }
 
         const types = new Set(typeArray);
+        for (const [set, type] of mappings) {
+            if (setEquivalent(types, set)) {
+                return type;
+            }
+        }
 
         const [firstType, ...restTypes] = types;
 
@@ -327,11 +334,22 @@ export namespace Type {
             return firstType;
         } else if (restTypes.filter(t => t.metaType !== firstType.metaType).length === 0) {
             if (firstType.metaType === CustomObjectMetaType) {
-                return new Intersection(types as Set<CustomObject>);
+                // make a new object that will represent the intersection as a placeholder
+                // this breaks the otherwise infinite recursion
+                const inter: Intersection = ({} as any);
+                mappings.push([types, inter]);
+                // setup the intersection (it can possibly depend on itself)
+                const type = new Intersection(types as Set<CustomObject>, mappings);
+                // grab all the info from the newly built type
+                Object.assign(inter, type);
+                // and make inheritence and instanceof work
+                (inter as any).__proto__ = (type as any).__proto__;
+                return inter;
             } else if (firstType.metaType.intersect) {
-                return firstType.metaType.intersect(types);
+                return firstType.metaType.intersect(types, mappings);
             }
         }
+
         throw new Error(`can't intersect types`);
     }
 

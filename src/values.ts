@@ -385,8 +385,8 @@ export namespace Value {
 
     const ArrayMetaType: Type.MetaType = {
         name: "Array",
-        intersect: (types: Iterable<ArrayType>) => {
-            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter));
+        intersect: (types: Iterable<ArrayType>, mappings) => {
+            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter), mappings);
             return new ArrayType(parameter);
         }
     };
@@ -457,9 +457,9 @@ export namespace Value {
 
     const MapMetaType: Type.MetaType = {
         name: "Map",
-        intersect: (types: Iterable<MapType>) => {
-            const key = Type.intersectTypes([...types].map(t => t.keyType));
-            const value = Type.intersectTypes([...types].map(t => t.keyType));
+        intersect: (types: Iterable<MapType>, mappings) => {
+            const key = Type.intersectTypes([...types].map(t => t.keyType), mappings);
+            const value = Type.intersectTypes([...types].map(t => t.keyType), mappings);
             return new MapType(key, value);
         }
     };
@@ -536,8 +536,8 @@ export namespace Value {
 
     const SetMetaType: Type.MetaType = {
         name: "Set",
-        intersect: (types: Iterable<SetType>) => {
-            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter));
+        intersect: (types: Iterable<SetType>, mappings) => {
+            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter), mappings);
             return new SetType(parameter);
         }
     };
