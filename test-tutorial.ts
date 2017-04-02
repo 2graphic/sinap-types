@@ -109,8 +109,8 @@ describe("Tutorial", () => {
                     ["func", {
                         argTypes: [tnumber],
                         returnType: null,
-                        implementation: function(this: any, a: Value.Value) {
-                            this.foo = a;
+                        implementation: function(this: Value.CustomObject, a: Value.Value) {
+                            this.set("foo", a);
                         }
                     }]
                 ]));

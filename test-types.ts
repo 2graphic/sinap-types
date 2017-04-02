@@ -148,29 +148,29 @@ describe("Types", () => {
             const i2_11 = new Type.Intersection([t2, t11]);
             const i23_11 = new Type.Intersection([t3, t2, t11]);
 
-            it("equal", () => {
+            it("handles equal types", () => {
                 expect(Type.isSubtype(i12a, i12a)).to.be.true;
                 expect(Type.isSubtype(i12a, i12b)).to.be.true;
             });
 
-            it("more", () => {
+            it("handles extra types", () => {
                 expect(Type.isSubtype(i12a, i123)).to.be.false;
                 expect(Type.isSubtype(i12a, i1234)).to.be.false;
             });
 
-            it("less", () => {
+            it("handles fewer types", () => {
                 expect(Type.isSubtype(i123, i12a)).to.be.true;
                 expect(Type.isSubtype(i1234, i12a)).to.be.true;
             });
 
-            it("disjoint", () => {
+            it("handles non-matching type sets", () => {
                 expect(Type.isSubtype(i23, i12a)).to.be.false;
                 expect(Type.isSubtype(i34, i12a)).to.be.false;
                 expect(Type.isSubtype(i12a, i23)).to.be.false;
                 expect(Type.isSubtype(i12a, i34)).to.be.false;
             });
 
-            it("subtype", () => {
+            it("recurs", () => {
                 expect(Type.isSubtype(i2_11, t2)).to.be.true;
                 expect(Type.isSubtype(i2_11, t11)).to.be.true;
                 expect(Type.isSubtype(i23_11, i2_11)).to.be.true;
@@ -197,6 +197,29 @@ describe("Types", () => {
                 ["hiWorld", new Type.Literal("hello")]
             ]));
             expect([...rec4.prettyNames.values()].sort()).to.deep.equal(["Hello World", "Hi World"]);
+        });
+    });
+
+    describe("Intersection", () => {
+        it("merges members", () => {
+            const tstring = new Type.Primitive("string");
+            const tHello = new Type.Literal("hello");
+            const Obj1 = new Type.CustomObject("Obj1", null, new Map<string, Type.Type>([
+                ["a", tstring],
+                ["b", tHello],
+                ["c", tHello],
+            ]));
+            const Obj2 = new Type.CustomObject("Obj1", null, new Map<string, Type.Type>([
+                ["a", tHello],
+                ["b", tstring],
+                ["d", tstring],
+            ]));
+
+            const inter = new Type.Intersection([Obj1, Obj2]);
+            expect(inter.members.get("a")).to.equal(tHello);
+            expect(inter.members.get("b")).to.equal(tHello);
+            expect(inter.members.get("c")).to.equal(tHello);
+            expect(inter.members.get("d")).to.equal(tstring);
         });
     });
 });

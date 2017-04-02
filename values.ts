@@ -45,7 +45,7 @@ export namespace Value {
 
         add(value: Value) {
             this.values.set(value.uuid, value);
-            this.updateDependencies(value, new Set(), new Set(dependecies(value)));
+            this.updateDependencies(value, new Set(), new Set(value.computeDependencies()));
             return value;
         }
 
@@ -111,7 +111,7 @@ export namespace Value {
         }
 
         valueChanged(value: Value, change: any) {
-            const newDeps = new Set(dependecies(value));
+            const newDeps = new Set(value.computeDependencies());
             if (!setEquivalent(newDeps, value.dependencyChildren)) {
                 this.updateDependencies(value, value.dependencyChildren, newDeps);
             }
@@ -188,12 +188,6 @@ export namespace Value {
         }
 
         /**
-         * Get the relative path to the given value
-         * @param value The `Value` to get the path for
-         */
-        abstract pathElement(value: Value): any;
-
-        /**
          * Subclasses can override this if the can determine equality more easily.
          *
          * Generic version checks if UUID's match. Failing that it checks if the serial
@@ -218,23 +212,24 @@ export namespace Value {
             });
         }
 
+        computeDependencies() {
+            const deps: Value[] = [];
+            traverse(this.serialRepresentation, (a) => {
+                if (typeof (a) === "object" && a.kind === "value-reference") {
+                    deps.push(this.environment.fromReference(a));
+                    return false;
+                }
+                return true;
+            });
+            return deps;
+        }
+
         /// TODO: Notify replace??
 
         // TODO: until old values are cleared from environment, we have a serious memory leak
         // a simple GC is one solution, but that sounds slow.
         // we can keep track of when things are no longer referenced, and that sounds much better.
         // might not support cycles?
-    }
-    export function dependecies(v: Value) {
-        const deps: Value[] = [];
-        traverse(v.serialRepresentation, (a) => {
-            if (typeof (a) === "object" && a.kind === "value-reference") {
-                deps.push(v.environment.fromReference(a));
-                return false;
-            }
-            return true;
-        });
-        return deps;
     }
 
     @TypeValue(Type.Primitive)
@@ -267,10 +262,6 @@ export namespace Value {
                 this._value = false;
             }
         }
-
-        pathElement(): never {
-            throw new Error("Can't get pathElement: Primitives don't have children");
-        }
     }
 
     @TypeValue(Type.Literal)
@@ -283,9 +274,6 @@ export namespace Value {
             this.value = this.serialRepresentation = type.value;
         }
 
-        pathElement(): never {
-            throw new Error("Can't get pathElement: Primitives don't have children");
-        }
     }
 
     function assignRecords(a: Value, b: Value): boolean {
@@ -348,15 +336,6 @@ export namespace Value {
                 const value = this.environment.make(valueType);
                 this.value[key] = value;
             }
-        }
-
-        pathElement(value: Value) {
-            for (const key in this.value) {
-                if (this.value[key].deepEqual(value)) {
-                    return key;
-                }
-            }
-            throw new Error(`can't find pathElement: the given value is not a child of this Record`);
         }
     }
 
@@ -442,10 +421,6 @@ export namespace Value {
             return this.underlying[Symbol.iterator]();
         }
 
-        pathElement(value: Value) {
-            return value;
-        }
-
     }
 
     export class MapType implements Type.Type {
@@ -515,18 +490,6 @@ export namespace Value {
                 this.environment.valueChanged(this, { key: k, from: existingValue, to: v });
             }
         }
-
-        pathElement(value: Value) {
-            if (this.underlying.has(value)) {
-                return { key: value };
-            }
-            for (const [key, memberValue] of this.underlying) {
-                if (memberValue.deepEqual(value)) {
-                    return { value: memberValue, matchingKey: key };
-                }
-            }
-            throw new Error("value not a member");
-        }
     }
 
     export class SetType implements Type.Type {
@@ -583,16 +546,11 @@ export namespace Value {
             this.environment.valueChanged(this, { delete: v });
             return result;
         }
-
-        pathElement(value: Value) {
-            return value;
-        }
-
     }
 
     @TypeValue(Type.CustomObject)
     export class CustomObject extends BaseObject {
-        simpleRepresentation: any = {};
+        readonly simpleRepresentation: any = {};
 
         constructor(readonly type: Type.CustomObject, environment: Environment) {
             super(type, environment);
@@ -610,7 +568,7 @@ export namespace Value {
             });
 
             // TODO: track changes originating here
-            const returnValue = method.implementation.call(this.simpleRepresentation, ...args) as void | Value;
+            const returnValue = method.implementation.call(this, ...args) as void | Value;
             if (method.returnType) {
                 if (!returnValue || !Type.isSubtype(returnValue.type, method.returnType)) {
                     throw new Error("returned incompatible value");
@@ -639,14 +597,51 @@ export namespace Value {
                 this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
             }
         }
+    }
 
-        pathElement(value: Value) {
-            for (const key of this.type.members.keys()) {
-                if (this.simpleRepresentation[key].deepEqual(value)) {
-                    return key;
+    class CustomObjectForIntersection extends CustomObject {
+        get serialRepresentation() {
+            return {};
+        };
+        constructor(type: Type.CustomObject, environment: Environment, readonly simpleRepresentation: any) {
+            super(type, environment);
+        }
+    }
+
+    @TypeValue(Type.Intersection)
+    export class Intersection extends BaseObject {
+        simpleRepresentation: any = {};
+
+        private values = new Map<Type.CustomObject, CustomObjectForIntersection>();
+
+        constructor(readonly type: Type.Intersection, environment: Environment) {
+            super(type, environment);
+
+            for (const innerType of type.types) {
+                const value = new CustomObjectForIntersection(innerType, environment, this.simpleRepresentation);
+                this.values.set(innerType, value);
+            }
+        }
+
+        get(key: string) {
+            CustomObject.prototype.get.call(this, key);
+        }
+
+        set(key: string, value: Value) {
+            for (const type of this.type.types) {
+                if (type.members.has(key)) {
+                    return this.values.get(type)!.set(key, value);
                 }
             }
-            throw new Error("pathElement: value not found on custom object");
+        }
+
+        call(method: string, ...args: Value[]) {
+            for (const type of this.type.types) {
+                if (type.methods.has(method)) {
+                    return this.values.get(type)!.call(method, ...args);
+                }
+            }
+            throw new Error(`cannot call "${name}". Method not found`);
         }
     }
 }

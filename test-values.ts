@@ -16,10 +16,10 @@ describe("Values", () => {
         const value: Value.Value = {
             uuid: "1",
             environment: env,
+            computeDependencies: () => [],
             dependencyParents: new Set(),
             dependencyChildren: new Set(),
             context: {},
-            pathElement: () => { throw new Error(); },
             deepEqual: () => false,
             type: new Type.Literal(1),
             serialRepresentation: [
@@ -27,7 +27,7 @@ describe("Values", () => {
                 { k: { v: env.toReference(n10) } }]
         };
         env.add(value);
-        const deps = Value.dependecies(value);
+        const deps = Value.Value.prototype.computeDependencies.call(value);
         expect(deps).to.deep.equal([n1, n10]);
     });
 
@@ -65,6 +65,58 @@ describe("Values", () => {
         });
     });
 
+    describe("Intersections", () => {
+        it("Handle the basics", () => {
+            const env = new Value.Environment();
+            const tnumber = new Type.Primitive("number");
+            const tA = new Type.CustomObject("A", null, new Map([["foo", tnumber]]));
+            const tB = new Type.CustomObject("B", null, new Map([["bar", tnumber]]));
+            const tInter = new Type.Intersection([tA, tB]);
+
+            const v = new Value.Intersection(tInter, env);
+
+            const n15 = new Value.Primitive(tnumber, env, 15);
+            const n16 = new Value.Primitive(tnumber, env, 16);
+            v.set("foo", n15);
+            v.set("bar", n16);
+
+            expect(v.serialRepresentation).to.deep.equal({
+                foo: env.toReference(n15),
+                bar: env.toReference(n16),
+            });
+        });
+        it("Match keys", () => { });
+        it("Call methods", () => {
+            const env = new Value.Environment();
+            const tnumber = new Type.Primitive("number");
+            const tA = new Type.CustomObject("A", null, new Map([["foo", tnumber]]), new Map([["foobar", {
+                argTypes: [],
+                returnType: null,
+                implementation: function(this: Value.CustomObject) {
+                    (this.get("foo") as Value.Primitive).value = 17;
+                },
+            }]]));
+            const tB = new Type.CustomObject("B", null, new Map([["bar", tnumber]]));
+            const tInter = new Type.Intersection([tA, tB]);
+
+            const v = new Value.Intersection(tInter, env);
+
+            const n15 = new Value.Primitive(tnumber, env, 15);
+            const n16 = new Value.Primitive(tnumber, env, 16);
+            v.set("foo", n15);
+            v.set("bar", n16);
+
+            v.call("foobar");
+
+            expect(v.serialRepresentation).to.deep.equal({
+                foo: env.toReference(n15),
+                bar: env.toReference(n16),
+            });
+
+            expect(n15.value).to.equal(17);
+        });
+    });
+
     describe("Custom Objects", () => {
         it("Map", () => {
             const env = new Value.Environment();
@@ -87,8 +139,8 @@ describe("Values", () => {
                     ["func", {
                         argTypes: [tnumber],
                         returnType: null,
-                        implementation: function(this: any, a: Value.Value) {
-                            this.foo = a;
+                        implementation: function(this: Value.CustomObject, a: Value.Value) {
+                            this.set("foo", a);
                         }
                     }]
                 ]));

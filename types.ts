@@ -180,7 +180,7 @@ export namespace Type {
                 {
                     argTypes: Type.Type[],
                     returnType: Type.Type | null,
-                    implementation: (this: any, ...args: Value.Value[]) => Value.Value | void
+                    implementation: (this: Value.CustomObject, ...args: Value.Value[]) => Value.Value | void
                 }>(),
             readonly prettyNames = new Map<string, string>(),
             readonly visibility = new Map<string, boolean>(),
@@ -224,9 +224,28 @@ export namespace Type {
     export class Intersection implements Type, UnionOrIntersection {
         readonly name: string;
         readonly types: Set<CustomObject>;
+        readonly members = new Map<string, Type.Type>();
+
         constructor(types: Iterable<CustomObject>) {
             this.types = new Set(types);
             this.name = [...this.types.values()].map(t => t.name).join(" & ");
+
+            for (const type of this.types) {
+                for (const [key, innerType] of type.members) {
+                    const existingType = this.members.get(key);
+                    if (existingType) {
+                        if (Type.isSubtype(existingType, innerType)) {
+                            // pass, things are already good
+                        } else if (Type.isSubtype(innerType, existingType)) {
+                            this.members.set(key, innerType);
+                        } else {
+                            throw new Error(`impossible intersection, key: '${key}' is incompatible`);
+                        }
+                    } else {
+                        this.members.set(key, innerType);
+                    }
+                }
+            }
         }
 
         equals(that: Type): boolean {
