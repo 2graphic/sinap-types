@@ -160,7 +160,7 @@ export namespace Value {
         }
     }
 
-    type ExtendedMetaType = Type.MetaType | typeof ArrayType | typeof SetType | typeof MapType;
+    type ExtendedMetaType = Type.TypeType | typeof ArrayType | typeof SetType | typeof MapType;
     const classes: [ExtendedMetaType, { new (t: Type.Type, environment: Environment): Value }][] = [];
     function valueConstructorForType(type: Type.Type) {
         const potentialConstructors = classes.filter(([t, _]) => type instanceof t).map(([_, v]) => v);
@@ -366,11 +366,6 @@ export namespace Value {
         }
     }
 
-    export const CustomObjectType: Type.Type = {
-        name: "custom-object-type",
-        equals: (that) => that === CustomObjectType,
-    };
-
     export abstract class BaseObject extends Value {
         abstract simpleRepresentation: any;
 
@@ -388,7 +383,16 @@ export namespace Value {
         }
     }
 
+    const ArrayMetaType: Type.MetaType = {
+        name: "Array",
+        intersect: (types: Iterable<ArrayType>) => {
+            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter));
+            return new ArrayType(parameter);
+        }
+    };
+
     export class ArrayType implements Type.Type {
+        metaType = ArrayMetaType;
         name = "Array";
         constructor(readonly typeParameter: Type.Type) {
 
@@ -451,7 +455,17 @@ export namespace Value {
 
     }
 
+    const MapMetaType: Type.MetaType = {
+        name: "Map",
+        intersect: (types: Iterable<MapType>) => {
+            const key = Type.intersectTypes([...types].map(t => t.keyType));
+            const value = Type.intersectTypes([...types].map(t => t.keyType));
+            return new MapType(key, value);
+        }
+    };
+
     export class MapType implements Type.Type {
+        metaType = MapMetaType;
         name = "Map";
         constructor(readonly keyType: Type.Type,
             readonly valueType: Type.Type) {
@@ -520,9 +534,18 @@ export namespace Value {
         }
     }
 
+    const SetMetaType: Type.MetaType = {
+        name: "Set",
+        intersect: (types: Iterable<SetType>) => {
+            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter));
+            return new SetType(parameter);
+        }
+    };
+
     export class SetType implements Type.Type {
+        metaType = SetMetaType;
         name = "Set";
-        typeParameter: Type.Type;
+        constructor(readonly typeParameter: Type.Type) { }
 
         equals(that: Type.Type): boolean {
             return that instanceof SetType && this.typeParameter === that.typeParameter;

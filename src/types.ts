@@ -3,8 +3,13 @@ import { Value } from ".";
 
 export namespace Type {
 
+    export interface MetaType {
+        readonly name: string;
+        intersect?(types: Iterable<Type>): Type;
+    }
     export interface Type {
         readonly name: string;
+        metaType: MetaType;
         equals(other: Type): boolean;
         isSubtype?(other: Type): boolean;
     }
@@ -77,7 +82,13 @@ export namespace Type {
         }
     }
 
+    const PrimitiveMetaType: MetaType = {
+        name: "Primitive"
+    };
+
     export class Primitive implements Type {
+        metaType = PrimitiveMetaType;
+
         constructor(readonly name: PrimitiveName) {
 
         }
@@ -91,7 +102,13 @@ export namespace Type {
         }
     }
 
+    const LiteralMetaType: MetaType = {
+        name: "Literal"
+    };
+
     export class Literal implements Type {
+        metaType = LiteralMetaType;
+
         readonly name: string;
         readonly superType: Primitive;
 
@@ -145,7 +162,14 @@ export namespace Type {
         readonly visibility: Map<string, boolean>;
     }
 
+    const RecordMetaType: MetaType = {
+        name: "Record"
+    };
+
+
     export class Record implements Type, RecordLike {
+        metaType = RecordMetaType;
+
         constructor(
             readonly name: string,
             readonly members: Map<string, Type>,
@@ -171,7 +195,13 @@ export namespace Type {
         }
     }
 
+    const CustomObjectMetaType: MetaType = {
+        name: "CustomObject"
+    };
+
     export class CustomObject implements Type, RecordLike {
+        metaType = CustomObjectMetaType;
+
         constructor(
             readonly name: string,
             readonly superType: CustomObject | null,
@@ -208,7 +238,12 @@ export namespace Type {
         readonly types: Set<Type>;
     }
 
+    const UnionMetaType: MetaType = {
+        name: "Union"
+    };
+
     export class Union implements Type, UnionOrIntersection {
+        metaType = UnionMetaType;
         readonly name: string;
         readonly types: Set<Type>;
         constructor(types: Iterable<Type>) {
@@ -221,52 +256,51 @@ export namespace Type {
         }
     }
 
+    const IntersectionMetaType: MetaType = {
+        name: "Intersection"
+    };
+
     export class Intersection implements Type, UnionOrIntersection {
+        metaType = IntersectionMetaType;
         readonly name: string;
-        readonly types: Set<CustomObject>;
+        readonly types = new Set<CustomObject>();
         readonly members = new Map<string, Type.Type>();
 
-        constructor(types: Iterable<CustomObject>) {
-            this.types = new Set(types);
+        /**
+         *
+         * @param types should be an iterable of CustomObject, will throw exception otherwise
+         */
+        constructor(types: Iterable<Type>) {
+            const ts = [...types];
+            for (const t of ts) {
+                if (t instanceof CustomObject) {
+                    this.types.add(t);
+                } else {
+                    throw new Error("can only intersect CustomObjects");
+                }
+            }
             this.name = [...this.types.values()].map(t => t.name).join(" & ");
 
-            const nestedIntersections = new Map<string, Set<(CustomObject | Intersection)>>();
+            const keyTypes = new Map<string, Set<Type>>();
 
             for (const type of this.types) {
                 for (const [key, innerType] of type.members) {
-                    const existingType = this.members.get(key);
-                    if ((innerType instanceof CustomObject) || (innerType instanceof Intersection)) {
-                        let set = nestedIntersections.get(key);
-                        if (!set) {
-                            set = new Set();
-                            nestedIntersections.set(key, set);
-                        }
-                        set.add(innerType);
-                    } else if (existingType) {
-                        if (Type.isSubtype(existingType, innerType)) {
-                            // pass, things are already good
-                        } else if (Type.isSubtype(innerType, existingType)) {
-                            this.members.set(key, innerType);
-                        } else {
-                            throw new Error(`impossible intersection, key: '${key}' is incompatible`);
+                    let set = keyTypes.get(key);
+                    if (!set) {
+                        set = new Set();
+                        keyTypes.set(key, set);
+                    }
+                    if (innerType instanceof Intersection) {
+                        for (const t of innerType.types) {
+                            set.add(t);
                         }
                     } else {
-                        this.members.set(key, innerType);
+                        set.add(innerType);
                     }
                 }
             }
-            for (const [key, types] of nestedIntersections) {
-                const newTypes = new Set<CustomObject>();
-                for (const type of types) {
-                    if (type instanceof CustomObject) {
-                        newTypes.add(type);
-                    } else {
-                        for (const t of type.types) {
-                            newTypes.add(t);
-                        }
-                    }
-                }
-                this.members.set(key, new Intersection(newTypes));
+            for (const [key, originalTypes] of keyTypes) {
+                this.members.set(key, intersectTypes(originalTypes));
             }
         }
 
@@ -275,6 +309,31 @@ export namespace Type {
         }
     }
 
-    export type MetaType = typeof Literal | typeof Primitive | typeof CustomObject | typeof Intersection | typeof Union | typeof Record;
+    export function intersectTypes(originalTypes: Iterable<Type>) {
+        const typeArray = [...originalTypes];
+        const types = new Set<Type>();
+        for (const t1 of typeArray) {
+            const strictSubtypes = typeArray.filter(t2 => !t1.equals(t2) && isSubtype(t2, t1));
+            if (strictSubtypes.length === 0) {
+                // look only the types who don't also have a subtype in the list
+                types.add(t1);
+            }
+        }
+
+        const [firstType, ...restTypes] = types;
+
+        if (restTypes.length === 0) {
+            return firstType;
+        } else if (restTypes.filter(t => t.metaType !== firstType.metaType).length === 0) {
+            if (firstType.metaType === CustomObjectMetaType) {
+                return new Intersection(types as Set<CustomObject>);
+            } else if (firstType.metaType.intersect) {
+                return firstType.metaType.intersect(types);
+            }
+        }
+        throw new Error(`can't intesect types`);
+    }
+
+    export type TypeType = typeof Literal | typeof Primitive | typeof CustomObject | typeof Intersection | typeof Union | typeof Record;
 
 }

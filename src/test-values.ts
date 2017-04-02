@@ -87,7 +87,22 @@ describe("Values", () => {
             expect(v.get("foo")).to.equal(n15);
         });
 
-        it("Call methods", () => {
+        it("handles arrays", () => {
+            const tnumber = new Type.Primitive("number");
+            const tA = new Type.CustomObject("A", null, new Map([["foo", tnumber]]));
+            const tB = new Type.CustomObject("B", null, new Map([["bar", tnumber]]));
+            const tAArray = new Value.ArrayType(tA);
+            const tBArray = new Value.ArrayType(tB);
+
+            const inter = Type.intersectTypes([tAArray, tBArray]) as Value.ArrayType;
+
+            expect(inter).to.be.instanceof(Value.ArrayType);
+            expect(inter.typeParameter).to.be.instanceof(Type.Intersection);
+            const param = inter.typeParameter as Type.Intersection;
+            expect(param.equals(new Type.Intersection([tA, tB]))).to.be.true;
+        });
+
+        it("can call methods", () => {
             const env = new Value.Environment();
             const tnumber = new Type.Primitive("number");
             const tA = new Type.CustomObject("A", null, new Map([["foo", tnumber]]), new Map([["foobar", {
