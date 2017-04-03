@@ -1,12 +1,12 @@
 {
   "name": "sinap-types",
   "description": "The type and object system for Sinap",
-  "version": "0.0.14",
-  "readme": "README.json",
+  "version": "0.0.15",
+  "readme": "README.md",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/2graphic/sinap-core"
+    "url": "https://github.com/2graphic/sinap-types"
   },
   "main": "lib/index.js",
   "typings": "lib/index",
