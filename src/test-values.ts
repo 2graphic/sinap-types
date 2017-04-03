@@ -610,4 +610,70 @@ describe("Values", () => {
             expect(env.values.has(b1.uuid)).to.be.true;
         });
     });
+
+    describe("initialize", () => {
+        it("initializes primitives", () => {
+            const env = new Value.Environment();
+            const p1 = new Value.Primitive(new Type.Primitive("string"), env);
+            expect(p1.value).to.equal("");
+        });
+        it("initializes records", () => {
+            const env = new Value.Environment();
+            const p1 = new Value.Record(new Type.Record("rec1", new Map<string, Type.Type>([
+                ["hello", new Type.Primitive("string")],
+                ["world", new Value.ArrayType(new Type.Primitive("number"))]
+            ])), env);
+
+            expect(p1.value.hello).to.instanceof(Value.Primitive);
+            expect((p1.value.hello as Value.Primitive).value).to.equal("");
+            expect(p1.value.world).to.instanceof(Value.ArrayObject);
+            expect([...(p1.value.world as Value.ArrayObject)]).to.deep.equal([]);
+
+        });
+
+        it("initializes CustomObject", () => {
+            const env = new Value.Environment();
+            const p1 = new Value.CustomObject(new Type.CustomObject("rec1", null, new Map([
+                ["hello", new Type.Primitive("number")]
+            ])), env);
+
+            p1.initialize();
+
+            expect(p1.get("hello")).to.instanceof(Value.Primitive);
+            expect((p1.get("hello") as Value.Primitive).value).to.equal(0);
+        });
+
+        it("initializes Intersection", () => {
+            const env = new Value.Environment();
+
+            const i1 = new Value.Intersection(new Type.Intersection([new Type.CustomObject("rec1", null, new Map([
+                ["hello", new Type.Primitive("number")]
+            ]))]), env);
+
+            i1.initialize();
+
+            expect(i1.get("hello")).to.instanceof(Value.Primitive);
+            expect((i1.get("hello") as Value.Primitive).value).to.equal(0);
+        });
+
+        it("initializes Union", () => {
+            const env = new Value.Environment();
+
+            const u1 = new Value.Union(new Type.Union(
+                [
+                    new Type.Literal("hello"),
+                    new Type.Literal("abc"),
+                ]
+            ), env);
+            env.add(u1);
+
+            expect(u1.value).to.instanceof(Value.Literal);
+            expect((u1.value as Value.Literal).value).to.equal("hello");
+
+            env.garbageCollect([u1]);
+            expect(env.values.size).to.equal(2);
+            expect([...env.values.values()]).to.contain(u1);
+            expect([...env.values.values()]).to.contain(u1.value);
+        });
+    });
 });

@@ -607,6 +607,12 @@ export namespace Value {
             super(type, environment);
         }
 
+        initialize() {
+            for (const [key, member] of this.type.members) {
+                this.set(key, this.environment.make(member));
+            }
+        }
+
         call(name: string, ...args: Value[]): Value | void {
             const method = this.type.methods.get(name);
             if (!method) {
@@ -674,6 +680,12 @@ export namespace Value {
             }
         }
 
+        initialize() {
+            for (const [key, member] of this.type.members) {
+                this.set(key, this.environment.make(member));
+            }
+        }
+
         get(key: string): Value {
             return CustomObject.prototype.get.call(this, key);
         }
@@ -693,6 +705,21 @@ export namespace Value {
                 }
             }
             throw new Error(`cannot call "${name}". Method not found`);
+        }
+    }
+
+    @TypeValue(Type.Union)
+    export class Union extends Value {
+        value: Value;
+
+        get serialRepresentation() {
+            return this.environment.toReference(this.value);
+        }
+
+        constructor(readonly type: Type.Union, environment: Environment) {
+            super(type, environment);
+
+            this.value = this.environment.make(this.type.types.values().next().value);
         }
     }
 }
