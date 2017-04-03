@@ -399,7 +399,7 @@ export namespace Value {
         }
 
         equals(that: Type.Type): boolean {
-            return that instanceof ArrayType && this.typeParameter === that.typeParameter;
+            return that instanceof ArrayType && this.typeParameter.equals(that.typeParameter);
         }
 
         isSubtype(that: Type.Type): boolean {
@@ -473,7 +473,7 @@ export namespace Value {
         }
 
         equals(that: Type.Type): boolean {
-            return that instanceof MapType && this.keyType === that.keyType && this.valueType === that.valueType;
+            return that instanceof MapType && this.keyType.equals(that.keyType) && this.valueType.equals(that.valueType);
         }
 
         isSubtype(that: Type.Type): boolean {
@@ -548,7 +548,7 @@ export namespace Value {
         constructor(readonly typeParameter: Type.Type) { }
 
         equals(that: Type.Type): boolean {
-            return that instanceof SetType && this.typeParameter === that.typeParameter;
+            return that instanceof SetType && this.typeParameter.equals(that.typeParameter);
         }
 
         isSubtype(that: Type.Type): boolean {
