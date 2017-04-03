@@ -43,17 +43,14 @@ export function deepCopy(serial: any, visit: (a: any) => { replace: boolean, val
     }
     if (typeof (serial) === "object") {
         if (Array.isArray(serial)) {
-            return serial.map((v) => deepCopy(v, visit));
+            to = to === undefined ? [] : to;
         } else {
-            const result: any = {};
-            for (const key in serial) {
-                result[key] = deepCopy(serial[key], visit);
-            }
-            if (to !== undefined) {
-                Object.assign(to, result);
-            }
-            return result;
+            to = to === undefined ? {} : to;
         }
+        for (const key in serial) {
+            to[key] = deepCopy(serial[key], visit);
+        }
+        return to;
     } else {
         return serial;
     }
