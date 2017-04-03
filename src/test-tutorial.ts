@@ -86,12 +86,7 @@ describe("Tutorial", () => {
             map.set(p1, pHello);
 
             // note the structure of the serial representation
-            expect(map.serialRepresentation).to.deep.equal({
-                "kind": "es6-map-object",
-                "entries": [
-                    [env.toReference(p1), env.toReference(pHello)],
-                ]
-            });
+            expect(map.serialRepresentation).to.deep.equal([[env.toReference(p1), env.toReference(pHello)]]);
         });
 
         describe("Custom Object", () => {

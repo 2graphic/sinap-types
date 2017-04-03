@@ -164,13 +164,11 @@ describe("Values", () => {
             const env = new Value.Environment();
             const tnumber = new Type.Primitive("number"), tstring = new Type.Primitive("string");
             const v = new Value.MapObject(new Value.MapType(tnumber, tstring), env);
-            v.set(new Value.Primitive(tnumber, env, 1), new Value.Primitive(tstring, env, "Hello"));
+            const v1 = new Value.Primitive(tnumber, env, 1);
+            const vHello = new Value.Primitive(tstring, env, "Hello");
+            v.set(v1, vHello);
             const rep = v.serialRepresentation;
-            expect(rep.kind).to.equal("es6-map-object");
-            expect(rep.entries.length).to.equal(1);
-            expect(rep.entries[0].length).to.equal(2);
-            expect(env.fromReference(rep.entries[0][0]).serialRepresentation).to.equal(1);
-            expect(env.fromReference(rep.entries[0][1]).serialRepresentation).to.equal("Hello");
+            expect(rep).to.deep.equal([[env.toReference(v1), env.toReference(vHello)]]);
         });
 
         describe("method manager", () => {

@@ -490,10 +490,7 @@ export namespace Value {
         private underlying: Map<Value, Value> = new Map();
 
         get simpleRepresentation() {
-            return {
-                kind: "es6-map-object",
-                entries: [...this.underlying.entries()]
-            };
+            return [...this.underlying.entries()];
         }
 
         constructor(readonly type: MapType, environment: Environment) {
@@ -563,10 +560,7 @@ export namespace Value {
         private underlying: Set<Value> = new Set();
 
         get simpleRepresentation() {
-            return {
-                kind: "es6-set-object",
-                values: [...this.underlying.values()]
-            };
+            return [...this.underlying.values()];
         }
 
         constructor(readonly type: SetType, readonly environment: Environment) {
