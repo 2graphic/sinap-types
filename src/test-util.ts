@@ -56,6 +56,12 @@ describe("util", () => {
         expect(deepCopy([1, 2, 3], (_) => {
             return { replace: false };
         })).to.deep.equal([1, 2, 3]);
+
+        const a = {};
+        deepCopy({ a: "b" }, (_) => {
+            return { replace: false };
+        }, a);
+        expect(a).to.deep.equal({ a: "b" });
     });
 
     describe("deep equal", () => {

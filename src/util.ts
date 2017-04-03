@@ -36,7 +36,7 @@ export function traverse(serial: any, visit: (a: any, path: (string | number)[])
     }
 }
 
-export function deepCopy(serial: any, visit: (a: any) => { replace: boolean, value?: any }): any {
+export function deepCopy(serial: any, visit: (a: any) => { replace: boolean, value?: any }, to?: any): any {
     const visitValue = visit(serial);
     if (visitValue.replace) {
         return visitValue.value;
@@ -48,6 +48,9 @@ export function deepCopy(serial: any, visit: (a: any) => { replace: boolean, val
             const result: any = {};
             for (const key in serial) {
                 result[key] = deepCopy(serial[key], visit);
+            }
+            if (to !== undefined) {
+                Object.assign(to, result);
             }
             return result;
         }
