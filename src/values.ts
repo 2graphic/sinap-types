@@ -139,6 +139,7 @@ export namespace Value {
          * @param roots an iterable of values to start flagging from
          */
         garbageCollect(roots: Iterable<Value>) {
+            // TODO: reason about how to avoid this
             const seen = new Set<Value>();
             function traverse(parent: Value) {
                 if (seen.has(parent)) {
@@ -611,6 +612,7 @@ export namespace Value {
             for (const [key, member] of this.type.members) {
                 this.set(key, this.environment.make(member));
             }
+            this.environment.valueChanged(this, "initialized");
         }
 
         call(name: string, ...args: Value[]): Value | void {
@@ -684,6 +686,7 @@ export namespace Value {
             for (const [key, member] of this.type.members) {
                 this.set(key, this.environment.make(member));
             }
+            this.environment.valueChanged(this, "initialized");
         }
 
         get(key: string): Value {
