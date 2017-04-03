@@ -181,22 +181,24 @@ describe("Types", () => {
     describe("Record", () => {
         it("infers pretty names", () => {
             const rec1 = new Type.Record("Rec1", new Map([["a", new Type.Literal("hello")]]));
-            expect([...rec1.prettyNames.values()]).to.deep.equal(["A"]);
+            expect(rec1.prettyName('a')).to.equal("A");
 
             const rec2 = new Type.Record("Rec2", new Map([["helloWorld", new Type.Literal("hello")]]));
-            expect([...rec2.prettyNames.values()]).to.deep.equal(["Hello World"]);
+            expect(rec2.prettyName("helloWorld")).to.equal("Hello World");
 
             const rec3 = new Type.Record("Rec3", new Map([
                 ["helloWorld", new Type.Literal("hello")],
                 ["hiWorld", new Type.Literal("hello")]
             ]), new Map([["hiWorld", "Greet Key"]]));
-            expect([...rec3.prettyNames.values()].sort()).to.deep.equal(["Greet Key", "Hello World"]);
+            expect(rec3.prettyName("helloWorld")).to.equal("Hello World");
+            expect(rec3.prettyName("hiWorld")).to.equal("Greet Key");
 
             const rec4 = new Type.Record("Rec4", new Map([
                 ["helloWorld", new Type.Literal("hello")],
                 ["hiWorld", new Type.Literal("hello")]
             ]));
-            expect([...rec4.prettyNames.values()].sort()).to.deep.equal(["Hello World", "Hi World"]);
+            expect(rec4.prettyName("hiWorld")).to.equal("Hi World");
+            expect(rec4.prettyName("helloWorld")).to.equal("Hello World");
         });
     });
 

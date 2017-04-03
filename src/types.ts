@@ -139,27 +139,14 @@ export namespace Type {
         }
     }
 
-
-    function inferPrettyNames(members: Iterable<string>, prettyNames: Map<string, string>) {
-        for (const key of members) {
-            if (!prettyNames.has(key)) {
-                prettyNames.set(key, key[0].toUpperCase() + key.substr(1).replace(/([a-z])([A-Z])/g, "$1 $2"));
-            }
-        }
-    }
-
-    function inferVisibility(members: Iterable<string>, visibility: Map<string, boolean>) {
-        for (const key of members) {
-            if (!visibility.has(key)) {
-                visibility.set(key, true);
-            }
-        }
+    function inferPrettyName(key: string) {
+        return key[0].toUpperCase() + key.substr(1).replace(/([a-z])([A-Z])/g, "$1 $2");
     }
 
     export interface RecordLike {
         readonly members: Map<string, Type>;
-        readonly prettyNames: Map<string, string>;
-        readonly visibility: Map<string, boolean>;
+        prettyName(key: string): string;
+        isVisible(key: string): boolean;
     }
 
     const RecordMetaType: MetaType = {
@@ -173,11 +160,17 @@ export namespace Type {
         constructor(
             readonly name: string,
             readonly members: Map<string, Type>,
-            readonly prettyNames = new Map<string, string>(),
-            readonly visibility = new Map<string, boolean>(),
+            private prettyNames = new Map<string, string>(),
+            private visibility = new Map<string, boolean>(),
         ) {
-            inferPrettyNames(this.members.keys(), prettyNames);
-            inferVisibility(this.members.keys(), visibility);
+        }
+
+        prettyName(key: string) {
+            return this.prettyNames.get(key) || inferPrettyName(key);
+        }
+
+        isVisible(key: string) {
+            return this.visibility.get(key) !== false;
         }
 
         equals(that: Type): boolean {
@@ -219,11 +212,17 @@ export namespace Type {
             readonly superType: CustomObject | null,
             readonly members: Map<string, Type>,
             readonly methods = new Map<string, MethodObject>(),
-            readonly prettyNames = new Map<string, string>(),
-            readonly visibility = new Map<string, boolean>(),
+            private prettyNames = new Map<string, string>(),
+            private visibility = new Map<string, boolean>(),
         ) {
-            inferPrettyNames(this.members.keys(), prettyNames);
-            inferVisibility(this.members.keys(), visibility);
+        }
+
+        prettyName(key: string) {
+            return this.prettyNames.get(key) || inferPrettyName(key);
+        }
+
+        isVisible(key: string) {
+            return this.visibility.get(key) !== false;
         }
 
         equals(that: Type): boolean {
