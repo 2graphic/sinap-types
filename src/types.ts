@@ -195,6 +195,18 @@ export namespace Type {
         }
     }
 
+    export type FunctionObject = {
+        argTypes: Type.Type[],
+        returnType: Type.Type | null,
+        implementation: (...args: Value.Value[]) => Value.Value | void
+    };
+
+    export type MethodObject = {
+        argTypes: Type.Type[],
+        returnType: Type.Type | null,
+        implementation: (this: Value.CustomObject, ...args: Value.Value[]) => Value.Value | void
+    };
+
     const CustomObjectMetaType: MetaType = {
         name: "CustomObject"
     };
@@ -206,12 +218,7 @@ export namespace Type {
             readonly name: string,
             readonly superType: CustomObject | null,
             readonly members: Map<string, Type>,
-            readonly methods = new Map<string,
-                {
-                    argTypes: Type.Type[],
-                    returnType: Type.Type | null,
-                    implementation: (this: Value.CustomObject, ...args: Value.Value[]) => Value.Value | void
-                }>(),
+            readonly methods = new Map<string, MethodObject>(),
             readonly prettyNames = new Map<string, string>(),
             readonly visibility = new Map<string, boolean>(),
         ) {
