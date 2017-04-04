@@ -15,7 +15,7 @@ export namespace Type {
     }
 
     export type PrimitiveTS = string | number | boolean;
-    export type PrimitiveName = "string" | "number" | "boolean";
+    export type PrimitiveName = "string" | "number" | "boolean" | "color" | "file";
 
     export function isSubtype(a: Type, b: Type): boolean {
         // TODO: figure out how to deal with types defined elsewhere

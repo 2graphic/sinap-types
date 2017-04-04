@@ -49,6 +49,14 @@ describe("Values", () => {
             expect(pNumber.serialRepresentation).to.equal(17);
             pNumber.value = 14;
             expect(pNumber.serialRepresentation).to.equal(14);
+
+            const tColor = new Type.Primitive("color");
+            const pColor = new Value.Primitive(tColor, env);
+            expect(pColor.value).to.equal("#ffff00");
+
+            const tFile = new Type.Primitive("file");
+            const pFile = new Value.Primitive(tFile, env);
+            expect(pFile.value).to.equal("NO FILE");
         });
     });
 

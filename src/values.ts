@@ -266,7 +266,15 @@ export namespace Value {
             return this._value;
         }
         set value(v) {
-            if (typeof (v) !== this.type.name) {
+            if (typeof (v) !== this.type.name) NoError: {
+                if (typeof (v) === "string") {
+                    if (this.type.name === "color") {
+                        break NoError;
+                    }
+                    if (this.type.name === "color") {
+                        break NoError;
+                    }
+                }
                 throw new Error(`cannot store a ${typeof (v)} in a ${this.type.name}`);
             }
             const oldValue = this._value;
@@ -284,6 +292,10 @@ export namespace Value {
                 this._value = "";
             } else if (this.type.name === "boolean") {
                 this._value = false;
+            } else if (this.type.name === "color") {
+                this._value = "#ffff00";
+            } else if (this.type.name === "file") {
+                this._value = "NO FILE";
             }
         }
     }
