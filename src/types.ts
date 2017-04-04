@@ -258,7 +258,7 @@ export namespace Type {
         }
 
         equals(that: Type): boolean {
-            return that instanceof Union && setEquivalent(this.types, that.types);
+            return that instanceof Union && setEquivalent(this.types, that.types, (a, b) => a.equals(b));
         }
     }
 
@@ -313,7 +313,7 @@ export namespace Type {
         }
 
         equals(that: Type): boolean {
-            return that instanceof Intersection && setEquivalent(this.types, that.types);
+            return that instanceof Intersection && setEquivalent(this.types, that.types, (a, b) => a.equals(b));
         }
     }
 

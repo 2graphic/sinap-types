@@ -15,12 +15,19 @@ export function mapEquivalent<K, V>(a: Map<K, V>, b: Map<K, V>, equals: (a: V, b
     return true;
 }
 
-export function setEquivalent<V>(a: Set<V>, b: Set<V>): boolean {
+export function setEquivalent<V>(a: Set<V>, b: Set<V>, equals?: (a: V, b: V) => boolean): boolean {
     if (a.size !== b.size) {
         return false;
     }
     for (const c of a.values()) {
-        if (!b.has(c)) {
+        if (!b.has(c)) Found: {
+            if (equals) {
+                for (const d of b.values()) {
+                    if (equals(c, d)) {
+                        break Found;
+                    }
+                }
+            }
             return false;
         }
     }
