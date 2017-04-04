@@ -1,4 +1,4 @@
-import { setEquivalent, mapEquivalent } from "./util";
+import { setEquivalent, mapEquivalent, minimizeTypeArray } from "./util";
 import { Value } from ".";
 
 export namespace Type {
@@ -318,14 +318,7 @@ export namespace Type {
     }
 
     export function intersectTypes(originalTypes: Iterable<Type>, mappings: [Set<Type>, Type][]) {
-        const typeArray = [...originalTypes];
-        for (const t1 of typeArray) {
-            for (const t2 of typeArray) {
-                if (Type.isSubtype(t1, t2)) {
-                    typeArray[typeArray.indexOf(t2)] = t1;
-                }
-            }
-        }
+        const typeArray = minimizeTypeArray(originalTypes);
 
         const types = new Set(typeArray);
         for (const [set, type] of mappings) {

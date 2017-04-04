@@ -1,3 +1,5 @@
+import { Type } from ".";
+
 export function mapEquivalent<K, V>(a: Map<K, V>, b: Map<K, V>, equals: (a: V, b: V) => boolean) {
     if (a.size !== b.size) {
         return false;
@@ -93,3 +95,22 @@ export function deepEqual(a: any, b: any, comparitor: (a: any, b: any) => true |
 
     return true;
 }
+
+/**
+ * Make a new array with the minimal amount of types from the Iterable.
+ * It the iterable is [A, B, C], and A isSubtype B, then the new array
+ * will be [A, C].
+ * @param originalTypes
+ */
+export function minimizeTypeArray(originalTypes: Iterable<Type.Type>) {
+    const typeArray = [...originalTypes];
+    for (const t1 of typeArray) {
+        for (const t2 of typeArray) {
+            if (Type.isSubtype(t1, t2)) {
+                typeArray[typeArray.indexOf(t2)] = t1;
+            }
+        }
+    }
+    return typeArray;
+}
+
