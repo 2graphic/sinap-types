@@ -1,7 +1,7 @@
 /// <reference path="../typings/index.d.ts" />
 
 import { expect } from "chai";
-import { setEquivalent, mapEquivalent, traverse, deepCopy, deepEqual } from "./util";
+import { setEquivalent, mapEquivalent, traverse, deepCopy, deepEqual, imap, ifilter, ireduce } from "./util";
 
 describe("util", () => {
     it("mapEquivalent", () => {
@@ -145,5 +145,18 @@ describe("util", () => {
         expect(testConfusingTSBehavior()).to.deep.equal([1]);
         expect(testConfusingTSBehavior()).to.deep.equal([1]);
         expect(testConfusingTSBehavior()).to.deep.equal([1]);
+    });
+
+    it("imap", () => {
+        expect([...imap(x => x + 1, [0, 1, 5])]).to.deep.equal([1, 2, 6]);
+    });
+
+    it("ifilter", () => {
+        expect([...ifilter(x => x > 2, [0, 1, 5])]).to.deep.equal([5]);
+    });
+
+    it("ireduce", () => {
+        expect(ireduce((x, y) => x + y, 2, [0, 1, 5])).to.deep.equal(8);
+        expect(ireduce((x, y) => x + y, "2", [0, 1, 5])).to.deep.equal("2015");
     });
 });

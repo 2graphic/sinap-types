@@ -34,13 +34,13 @@ export function setEquivalent<V>(a: Set<V>, b: Set<V>, equals?: (a: V, b: V) => 
     return true;
 }
 
-export function traverse(serial: any, visit: (a: any, path: (string | number)[]) => boolean, existingPath: (string | number)[] = []) {
-    if (!visit(serial, existingPath)) {
+export function traverse(serial: any, visit: (a: any) => boolean) {
+    if (!visit(serial)) {
         return;
     }
     if (typeof (serial) === "object") {
         for (const key in serial) {
-            traverse(serial[key], visit, [...existingPath, key]);
+            traverse(serial[key], visit);
         }
     }
 }
@@ -121,3 +121,24 @@ export function minimizeTypeArray(originalTypes: Iterable<Type.Type>) {
     return typeArray;
 }
 
+export function* imap<T, V>(func: (t: T) => V, inp: Iterable<T>): Iterable<V> {
+    for (const element of inp) {
+        yield func(element);
+    }
+}
+
+export function* ifilter<T>(func: (t: T) => boolean, inp: Iterable<T>): Iterable<T> {
+    for (const element of inp) {
+        if (func(element)) {
+            yield element;
+        }
+    }
+}
+
+export function ireduce<T, V>(func: (prev: V, t: T) => V, init: V, inp: Iterable<T>): V {
+    let result = init;
+    for (const element of inp) {
+        result = func(result, element);
+    }
+    return result;
+}

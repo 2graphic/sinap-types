@@ -1,5 +1,5 @@
 import { Type } from "./types";
-import { traverse, deepCopy, deepEqual, setEquivalent } from "./util";
+import { traverse, deepCopy, deepEqual, setEquivalent, ifilter, imap } from "./util";
 import { v4 as uuid } from "uuid";
 
 export namespace Value {
@@ -63,8 +63,8 @@ export namespace Value {
         }
 
         private updateDependencies(value: Value, oldDeps: Set<Value>, newDeps: Set<Value>) {
-            const removedDependecies = [...oldDeps].filter(x => !newDeps.has(x));
-            const addedDependecies = [...newDeps].filter(x => !oldDeps.has(x));
+            const removedDependecies = ifilter(x => !newDeps.has(x), oldDeps);
+            const addedDependecies = ifilter(x => !oldDeps.has(x), newDeps);
 
             for (const dep of removedDependecies) {
                 dep.dependencyParents.delete(value);
@@ -103,6 +103,7 @@ export namespace Value {
 
         private rebuildDependencyMaps() {
             this.listenersForValue = new Map();
+
             for (const listener of this.listeners) {
                 this.addDepencies(listener);
             }
@@ -399,7 +400,7 @@ export namespace Value {
     const ArrayMetaType: Type.MetaType = {
         name: "Array",
         intersect: (types: Iterable<ArrayType>, mappings) => {
-            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter), mappings);
+            const parameter = Type.intersectTypes(imap(t => t.typeParameter, types), mappings);
             return new ArrayType(parameter);
         }
     };
@@ -471,8 +472,8 @@ export namespace Value {
     const MapMetaType: Type.MetaType = {
         name: "Map",
         intersect: (types: Iterable<MapType>, mappings) => {
-            const key = Type.intersectTypes([...types].map(t => t.keyType), mappings);
-            const value = Type.intersectTypes([...types].map(t => t.keyType), mappings);
+            const key = Type.intersectTypes(imap(t => t.keyType, types), mappings);
+            const value = Type.intersectTypes(imap(t => t.keyType, types), mappings);
             return new MapType(key, value);
         }
     };
@@ -547,7 +548,7 @@ export namespace Value {
     const SetMetaType: Type.MetaType = {
         name: "Set",
         intersect: (types: Iterable<SetType>, mappings) => {
-            const parameter = Type.intersectTypes([...types].map(t => t.typeParameter), mappings);
+            const parameter = Type.intersectTypes(imap(t => t.typeParameter, types), mappings);
             return new SetType(parameter);
         }
     };

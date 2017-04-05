@@ -15,7 +15,8 @@
             },
             "runtimeArgs": [
                 "--colors",
-                "${workspaceRoot}/lib/test-*.js"
+                "${workspaceRoot}/lib/test-*.js",
+                "--grep", ""
             ],
             "outFiles": [
                 "${workspaceRoot}/lib/*"

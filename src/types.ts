@@ -1,4 +1,4 @@
-import { setEquivalent, mapEquivalent, minimizeTypeArray } from "./util";
+import { setEquivalent, mapEquivalent, minimizeTypeArray, imap } from "./util";
 import { Value } from ".";
 
 export namespace Type {
@@ -254,7 +254,7 @@ export namespace Type {
         readonly types: Set<Type>;
         constructor(types: Iterable<Type>) {
             this.types = new Set(types);
-            this.name = [...this.types.values()].map(t => t.name).join(" | ");
+            this.name = [...imap(t => t.name, this.types)].join(" | ");
         }
 
         equals(that: Type): boolean {
@@ -277,15 +277,14 @@ export namespace Type {
          * @param types should be an iterable of CustomObject, will throw exception otherwise
          */
         constructor(types: Iterable<Type>, mappings: [Set<Type>, Type][] = []) {
-            const ts = [...types];
-            for (const t of ts) {
+            for (const t of types) {
                 if (t instanceof CustomObject) {
                     this.types.add(t);
                 } else {
                     throw new Error("can only intersect CustomObjects");
                 }
             }
-            this.name = [...this.types.values()].map(t => t.name).join(" & ");
+            this.name = [...imap(t => t.name, this.types)].join(" & ");
 
             const keyTypes = new Map<string, Set<Type>>();
 
