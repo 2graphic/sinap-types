@@ -237,4 +237,8 @@ describe("Types", () => {
             expect((tInter.members.get("ab") as Type.Intersection).members.get("num2")).to.equal(tnumber);
         });
     });
+
+    it("literal equals", () => {
+        expect((new Type.Literal("a")).equals(new Type.Literal("a"))).to.be.true;
+    });
 });
