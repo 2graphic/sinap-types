@@ -434,6 +434,10 @@ export namespace Value {
             super(type, environment);
         }
 
+        get length(): number {
+            return this.underlying.length;
+        }
+
         push(v: Value) {
             this.environment.add(v);
             const index = this.underlying.push(v);
@@ -543,6 +547,10 @@ export namespace Value {
                 this.environment.valueChanged(this, { key: k, from: existingValue, to: v });
             }
         }
+
+        [Symbol.iterator]() {
+            return this.underlying[Symbol.iterator]();
+        }
     }
 
     const SetMetaType: Type.MetaType = {
@@ -604,6 +612,10 @@ export namespace Value {
             const result = this.underlying.delete(v);
             this.environment.valueChanged(this, { delete: v });
             return result;
+        }
+
+        [Symbol.iterator]() {
+            return this.underlying[Symbol.iterator]();
         }
     }
 
