@@ -34,8 +34,16 @@ export namespace Value {
          * Make an object of the given `type`
          * @param type type of the object to create
          */
-        make(type: Type.Type) {
-            const vnew = new (valueConstructorForType(type))(type, this);
+        make(type: Type.Type): Value.Value {
+            if (type instanceof Type.Union) {
+                return this.make(type.types.values().next().value);
+            }
+            const potentialConstructors = classes.filter(([t, _]) => type instanceof t).map(([_, v]) => v);
+            if (potentialConstructors.length !== 1) {
+                throw new Error("can't find given type");
+            }
+            const vnew = new (potentialConstructors[0])(type, this);
+
             this.add(vnew);
             return vnew;
         }
@@ -164,13 +172,6 @@ export namespace Value {
 
     type ExtendedMetaType = Type.TypeType | typeof ArrayType | typeof SetType | typeof MapType;
     const classes: [ExtendedMetaType, { new (t: Type.Type, environment: Environment): Value }][] = [];
-    function valueConstructorForType(type: Type.Type) {
-        const potentialConstructors = classes.filter(([t, _]) => type instanceof t).map(([_, v]) => v);
-        if (potentialConstructors.length !== 1) {
-            throw new Error("can't find given type");
-        }
-        return potentialConstructors[0];
-    }
 
     function TypeValue(s: ExtendedMetaType) {
         return (constructor: { new (t: Type.Type, environment: Environment): Value }) => {
@@ -727,21 +728,6 @@ export namespace Value {
                 }
             }
             throw new Error(`cannot call "${name}". Method not found`);
-        }
-    }
-
-    @TypeValue(Type.Union)
-    export class Union extends Value {
-        value: Value;
-
-        get serialRepresentation() {
-            return this.environment.toReference(this.value);
-        }
-
-        constructor(readonly type: Type.Union, environment: Environment) {
-            super(type, environment);
-
-            this.value = this.environment.make(this.type.types.values().next().value);
         }
     }
 }

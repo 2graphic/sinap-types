@@ -33,9 +33,9 @@ describe("Values", () => {
     describe("literals and primitives", () => {
         it("unions init literals as literals", () => {
             const t = new Type.Union([new Type.Literal("hi")]);
-            const v = new Value.Union(t, new Value.Environment());
-            expect(v.value).to.instanceof(Value.Literal);
-            expect((v.value as Value.Literal).value).to.equal("hi");
+            const v = new Value.Environment().make(t);
+            expect(v).to.instanceof(Value.Literal);
+            expect((v as Value.Literal).value).to.equal("hi");
         });
 
         it("literals", () => {
@@ -376,14 +376,14 @@ describe("Values", () => {
 
         it("unions", (done) => {
             const env = new Value.Environment();
-            const n1 = new Value.Union(new Type.Union([tnumber]), env);
+            const n1 = env.make(new Type.Union([tnumber]));
             env.add(n1);
 
             listenForTheseChanges(env, n1, done, [
-                [n1.value, { from: 0, to: 7 }],
+                [n1, { from: 0, to: 7 }],
             ]);
 
-            (n1.value as Value.Primitive).value = 7;
+            (n1 as Value.Primitive).value = 7;
         });
 
         it("intersections", (done) => {
@@ -701,21 +701,20 @@ describe("Values", () => {
         it("initializes Union", () => {
             const env = new Value.Environment();
 
-            const u1 = new Value.Union(new Type.Union(
+            const u1 = env.make(new Type.Union(
                 [
                     new Type.Literal("hello"),
                     new Type.Literal("abc"),
                 ]
-            ), env);
+            ));
             env.add(u1);
 
-            expect(u1.value).to.instanceof(Value.Literal);
-            expect((u1.value as Value.Literal).value).to.equal("hello");
+            expect(u1).to.instanceof(Value.Literal);
+            expect((u1 as Value.Literal).value).to.equal("hello");
 
             env.garbageCollect([u1]);
-            expect(env.values.size).to.equal(2);
+            expect(env.values.size).to.equal(1);
             expect([...env.values.values()]).to.contain(u1);
-            expect([...env.values.values()]).to.contain(u1.value);
         });
     });
 });
