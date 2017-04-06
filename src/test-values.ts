@@ -31,6 +31,13 @@ describe("Values", () => {
     });
 
     describe("literals and primitives", () => {
+        it("unions init literals as literals", () => {
+            const t = new Type.Union([new Type.Literal("hi")]);
+            const v = new Value.Union(t, new Value.Environment());
+            expect(v.value).to.instanceof(Value.Literal);
+            expect((v.value as Value.Literal).value).to.equal("hi");
+        });
+
         it("literals", () => {
             const env = new Value.Environment();
             const t1 = new Type.Literal(1);
@@ -365,6 +372,18 @@ describe("Values", () => {
             ]);
 
             n1.value = 7;
+        });
+
+        it("unions", (done) => {
+            const env = new Value.Environment();
+            const n1 = new Value.Union(new Type.Union([tnumber]), env);
+            env.add(n1);
+
+            listenForTheseChanges(env, n1, done, [
+                [n1.value, { from: 0, to: 7 }],
+            ]);
+
+            (n1.value as Value.Primitive).value = 7;
         });
 
         it("records", (done) => {
