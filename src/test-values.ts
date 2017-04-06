@@ -386,6 +386,23 @@ describe("Values", () => {
             (n1.value as Value.Primitive).value = 7;
         });
 
+        it("intersections", (done) => {
+            const env = new Value.Environment();
+            const n1 = new Value.Intersection(new Type.Intersection([new Type.CustomObject("obj", null, new Map<string, Type.Type>([
+                ["a", new Type.Union([tnumber])],
+                ["b", tnumber],
+            ]))]), env);
+            env.add(n1);
+
+            n1.set("a", new Value.Primitive(tnumber, env, 0));
+
+            listenForTheseChanges(env, n1, done, [
+                [n1.get("a"), { from: 0, to: 7 }],
+            ]);
+
+            (n1.get("a") as Value.Primitive).value = 7;
+        });
+
         it("records", (done) => {
             const env = new Value.Environment();
             const r1 = new Value.Record(trec1, env);

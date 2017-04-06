@@ -703,7 +703,7 @@ export namespace Value {
         set(key: string, value: Value) {
             for (const type of this.type.types) {
                 if (type.members.has(key)) {
-                    return this.values.get(type)!.set(key, value);
+                    return this.values.get(type)!.set.call(this, key, value);
                 }
             }
         }
