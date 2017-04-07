@@ -315,7 +315,7 @@ export namespace Value {
                     if (this.type.name === "color") {
                         break NoError;
                     }
-                    if (this.type.name === "color") {
+                    if (this.type.name === "file") {
                         break NoError;
                     }
                 }

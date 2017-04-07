@@ -50,6 +50,16 @@ describe("Values", () => {
             expect(lHello.serialRepresentation).to.equal("hello");
         });
 
+        it("can assign to colors", () => {
+            const v = new Value.Environment().make(new Type.Primitive("color"));
+            v.value = "helo";
+        });
+
+        it("can assign to files", () => {
+            const v = new Value.Environment().make(new Type.Primitive("file"));
+            v.value = "helo";
+        });
+
         it("primitives", () => {
             const env = new Value.Environment();
             const tNumber = new Type.Primitive("number");

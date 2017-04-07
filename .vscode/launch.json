@@ -16,7 +16,7 @@
             "runtimeArgs": [
                 "--colors",
                 "${workspaceRoot}/lib/test-*.js",
-                "--grep", "Deserialization"
+                "--grep", ""
             ],
             "outFiles": [
                 "${workspaceRoot}/lib/*"
