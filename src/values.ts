@@ -741,7 +741,16 @@ export namespace Value {
 
     @TypeValue(Type.Union)
     export class Union extends Value {
-        value: Value;
+        private _value: Value;
+        get value() {
+            return this._value;
+        }
+        set value(v: Value) {
+            const old = this._value;
+            this.environment.add(v);
+            this._value = v;
+            this.environment.valueChanged(this, { from: old, to: v });
+        }
 
         get serialRepresentation() {
             return this.environment.toReference(this.value);

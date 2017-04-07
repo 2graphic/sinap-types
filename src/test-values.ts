@@ -403,7 +403,7 @@ describe("Values", () => {
             ((n1.get("a") as Value.Union).value as Value.Primitive).value = 7;
         });
 
-        it("intersectionsWithUnionsOfLiterals1", (done) => {
+        it("tracks literals in unions in intersections", (done) => {
             const env = new Value.Environment();
             const thello = new Type.Literal("hello");
             const tworld = new Type.Literal("world");
@@ -415,32 +415,16 @@ describe("Values", () => {
 
             n1.set("a", new Value.Union(n1.type.members.get("a") as Type.Union, env));
 
-            (n1.get("a") as Value.Union).value = new Value.Literal(thello, env);
+            const vHello = new Value.Literal(thello, env);
+            const vWorld = new Value.Literal(tworld, env);
+
+            (n1.get("a") as Value.Union).value = vHello;
 
             listenForTheseChanges(env, n1, done, [
-                [(n1.get("a") as Value.Union).value, { from: "hello", to: "world" }],
+                [n1.get("a"), { from: vHello, to: vWorld }],
             ]);
 
-            (n1.get("a") as Value.Union).value = new Value.Literal(tworld, env);
-        });
-
-        it("intersectionsWithUnionsOfLiterals2", (done) => {
-            const env = new Value.Environment();
-            const thello = new Type.Literal("hello");
-            const tworld = new Type.Literal("world");
-            const n1 = new Value.Intersection(new Type.Intersection([new Type.CustomObject("obj", null, new Map<string, Type.Type>([
-                ["a", new Type.Union([thello, tworld])],
-                ["b", tnumber],
-            ]))]), env);
-            env.add(n1);
-
-            n1.set("a", new Value.Union(n1.type.members.get("a") as Type.Union, env));
-
-            (n1.get("a") as Value.Union).value = new Value.Literal(thello, env);
-
-            env.listen(() => done, () => true, n1);
-
-            (n1.get("a") as Value.Union).value = new Value.Literal(tworld, env);
+            (n1.get("a") as Value.Union).value = vWorld;
         });
 
         it("records", (done) => {
