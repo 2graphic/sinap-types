@@ -34,7 +34,15 @@ export namespace Value {
          * Make an object of the given `type`
          * @param type type of the object to create
          */
-        make(type: Type.Type): Value.Value {
+        make(type: Type.CustomObject): Value.CustomObject;
+        make(type: Type.Intersection): Value.Intersection;
+        make(type: Type.Literal): Value.Literal;
+        make(type: Type.Primitive): Value.Primitive;
+        make(type: Value.ArrayType): Value.ArrayObject;
+        make(type: Value.MapType): Value.MapObject;
+        make(type: Value.SetType): Value.SetObject;
+        make(type: Type.Type): Value.Value;
+        make(type: Type.Type) {
             if (type instanceof Type.Union) {
                 return this.make(type.types.values().next().value);
             }
