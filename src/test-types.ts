@@ -128,7 +128,7 @@ describe("Types", () => {
             });
 
             it("external subtype", () => {
-                expect(Type.isSubtype(u12a, tnum)).to.be.true;
+                expect(Type.isSubtype(u12a, tnum)).to.be.false;
                 expect(Type.isSubtype(tnum, u12a)).to.be.false;
                 expect(Type.isSubtype(u12a, tstring)).to.be.false;
             });

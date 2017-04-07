@@ -38,38 +38,8 @@ export namespace Type {
             } else {
                 return false;
             }
-        } else if (b instanceof Union) {
-            if (a instanceof Union) {
-                for (const ta of a.types) {
-                    let found = false;
-                    for (const tb of b.types) {
-                        if (isSubtype(ta, tb)) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        return false;
-                    }
-                }
-                return true;
-            } else {
-                for (const t of b.types) {
-                    if (isSubtype(a, t)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
         } else if (a.isSubtype) {
             return a.isSubtype(b);
-        } else if (a instanceof Union) {
-            for (const t of a.types) {
-                if (!isSubtype(t, b)) {
-                    return false;
-                }
-            }
-            return true;
         } else if (a instanceof Intersection) {
             for (const t of a.types) {
                 if (isSubtype(t, b)) {
@@ -259,6 +229,26 @@ export namespace Type {
 
         equals(that: Type): boolean {
             return that instanceof Union && setEquivalent(this.types, that.types, (a, b) => a.equals(b));
+        }
+
+        isSubtype(that: Type) {
+            if (that instanceof Union) {
+                for (const ta of this.types) {
+                    let found = false;
+                    for (const tb of that.types) {
+                        if (Type.isSubtype(ta, tb)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
