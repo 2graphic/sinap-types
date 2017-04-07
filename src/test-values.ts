@@ -18,6 +18,7 @@ describe("Values", () => {
             computeDependencies: () => [],
             dependencyParents: new Set(),
             dependencyChildren: new Set(),
+            loadSerial: () => { },
             context: {},
             deepEqual: () => false,
             type: new Type.Literal(1),

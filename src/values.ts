@@ -34,26 +34,52 @@ export namespace Value {
          * Make an object of the given `type`
          * @param type type of the object to create
          */
-        make(type: Type.CustomObject): Value.CustomObject;
-        make(type: Type.Intersection): Value.Intersection;
-        make(type: Type.Literal): Value.Literal;
-        make(type: Type.Primitive): Value.Primitive;
-        make(type: Value.ArrayType): Value.ArrayObject;
-        make(type: Value.MapType): Value.MapObject;
-        make(type: Value.SetType): Value.SetObject;
-        make(type: Type.Union): Value.Union;
-        make(type: Type.Type): Value.Value;
-        make(type: Type.Type) {
+        make(type: Type.CustomObject, uuid?: string): Value.CustomObject;
+        make(type: Type.Intersection, uuid?: string): Value.Intersection;
+        make(type: Type.Literal, uuid?: string): Value.Literal;
+        make(type: Type.Primitive, uuid?: string): Value.Primitive;
+        make(type: Value.ArrayType, uuid?: string): Value.ArrayObject;
+        make(type: Value.MapType, uuid?: string): Value.MapObject;
+        make(type: Value.SetType, uuid?: string): Value.SetObject;
+        make(type: Type.Union, uuid?: string): Value.Union;
+        make(type: Type.Type, uuid?: string): Value.Value;
+        make(type: Type.Type, uuid?: string) {
             const vnew = new (valueConstructorForType(type))(type, this);
+            if (uuid) {
+                (vnew as any).uuid = uuid;
+            }
             this.add(vnew);
             return vnew;
         }
 
 
         add(value: Value) {
+            const waitingFuncs = this.waitingForUUIDs.get(value.uuid);
+            if (waitingFuncs) {
+                this.waitingForUUIDs.delete(value.uuid);
+                for (const func of waitingFuncs) {
+                    func(value);
+                }
+            }
             this.values.set(value.uuid, value);
             this.updateDependencies(value, new Set(), new Set(value.computeDependencies()));
             return value;
+        }
+
+        private waitingForUUIDs = new Map<string, Set<(value: Value) => void>>();
+
+        whenHas(uuid: string, func: (v: Value) => void) {
+            const value = this.values.get(uuid);
+            if (value) {
+                func(value);
+            } else {
+                let pool = this.waitingForUUIDs.get(uuid);
+                if (!pool) {
+                    pool = new Set();
+                    this.waitingForUUIDs.set(uuid, pool);
+                }
+                pool.add(func);
+            }
         }
 
         toReference(value: Value): ValueReference {
@@ -169,6 +195,12 @@ export namespace Value {
                 }
             }
         }
+
+        fromSerial(t: Type.Type, jso: any, uuid: string) {
+            const v = this.make(t, uuid);
+            v.loadSerial(jso);
+            return v;
+        }
     }
 
     type ExtendedMetaType = Type.TypeType | typeof ArrayType | typeof SetType | typeof MapType;
@@ -258,6 +290,8 @@ export namespace Value {
             return deps;
         }
 
+        abstract loadSerial(jso: any): void;
+
         /// TODO: Notify replace??
 
         // TODO: until old values are cleared from environment, we have a serious memory leak
@@ -308,6 +342,10 @@ export namespace Value {
                 this._value = "NO FILE";
             }
         }
+
+        loadSerial(j: any) {
+            this.value = j;
+        }
     }
 
     export function makePrimitive(env: Environment, value: Type.PrimitiveTS) {
@@ -323,7 +361,8 @@ export namespace Value {
             super(type, environment);
             this.value = this.serialRepresentation = type.value;
         }
-
+        loadSerial() {
+        }
     }
 
     function assignRecords(a: Value, b: Value): boolean {
@@ -385,6 +424,14 @@ export namespace Value {
             for (const [key, valueType] of type.members.entries()) {
                 const value = this.environment.make(valueType);
                 this.value[key] = value;
+            }
+        }
+
+        loadSerial(jso: any) {
+            for (const key in jso) {
+                this.environment.whenHas(jso[key].uuid, (value: Value) => {
+                    this.value[key] = value;
+                });
             }
         }
     }
@@ -480,6 +527,13 @@ export namespace Value {
             return this.underlying[Symbol.iterator]();
         }
 
+        loadSerial(jso: any) {
+            for (const ref of jso) {
+                this.environment.whenHas(ref.uuid, (value: Value) => {
+                    this.push(value);
+                });
+            }
+        }
     }
 
     const MapMetaType: Type.MetaType = {
@@ -560,6 +614,15 @@ export namespace Value {
         [Symbol.iterator]() {
             return this.underlying[Symbol.iterator]();
         }
+        loadSerial(jso: any) {
+            for (const [keyRef, valueRef] of jso) {
+                this.environment.whenHas(keyRef.uuid, (keyValue: Value) => {
+                    this.environment.whenHas(valueRef.uuid, (valueValue: Value) => {
+                        this.set(keyValue, valueValue);
+                    });
+                });
+            }
+        }
     }
 
     const SetMetaType: Type.MetaType = {
@@ -626,6 +689,13 @@ export namespace Value {
         [Symbol.iterator]() {
             return this.underlying[Symbol.iterator]();
         }
+        loadSerial(jso: any) {
+            for (const ref of jso) {
+                this.environment.whenHas(ref.uuid, (value: Value) => {
+                    this.add(value);
+                });
+            }
+        }
     }
 
     @TypeValue(Type.CustomObject)
@@ -684,6 +754,14 @@ export namespace Value {
                 this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
             }
         }
+
+        loadSerial(jso: any) {
+            for (const key in jso) {
+                this.environment.whenHas(jso[key].uuid, (value: Value) => {
+                    this.set(key, value);
+                });
+            }
+        }
     }
 
     class CustomObjectForIntersection extends CustomObject {
@@ -737,6 +815,14 @@ export namespace Value {
             }
             throw new Error(`cannot call "${name}". Method not found`);
         }
+
+        loadSerial(jso: any) {
+            for (const key in jso) {
+                this.environment.whenHas(jso[key].uuid, (value: Value) => {
+                    this.set(key, value);
+                });
+            }
+        }
     }
 
     @TypeValue(Type.Union)
@@ -760,6 +846,12 @@ export namespace Value {
             super(type, environment);
 
             this.value = this.environment.make(this.type.types.values().next().value);
+        }
+
+        loadSerial(jso: any) {
+            this.environment.whenHas(jso.uuid, (value: Value) => {
+                this.value = value;
+            });
         }
     }
 }
