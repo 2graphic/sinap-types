@@ -103,6 +103,7 @@ describe("Tutorial", () => {
                     ["func", {
                         argTypes: [tnumber],
                         returnType: null,
+                        isGetter: false,
                         implementation: function(this: Value.CustomObject, a: Value.Value) {
                             this.set("foo", a);
                         }
@@ -143,6 +144,7 @@ describe("Tutorial", () => {
                     ["func", {
                         argTypes: [],
                         returnType: tstring,
+                        isGetter: false,
                         implementation: function(this: any) {
                             return new Value.Primitive(tstring, env, "Hi");
                         }

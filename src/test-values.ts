@@ -160,6 +160,7 @@ describe("Values", () => {
             const tA = new Type.CustomObject("A", null, new Map([["foo", tnumber]]), new Map([["foobar", {
                 argTypes: [],
                 returnType: null,
+                isGetter: false,
                 implementation: function(this: Value.CustomObject) {
                     (this.get("foo") as Value.Primitive).value = 17;
                 },
@@ -205,6 +206,7 @@ describe("Values", () => {
                     ["func", {
                         argTypes: [tnumber],
                         returnType: null,
+                        isGetter: false,
                         implementation: function(this: Value.CustomObject, a: Value.Value) {
                             this.set("foo", a);
                         }
@@ -246,6 +248,7 @@ describe("Values", () => {
                     ["func", {
                         argTypes: [],
                         returnType: tstring,
+                        isGetter: false,
                         implementation: function(this: any) {
                             return new Value.Primitive(tstring, env, "Hi");
                         }

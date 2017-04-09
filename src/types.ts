@@ -161,13 +161,13 @@ export namespace Type {
     export type FunctionObject = {
         argTypes: Type.Type[],
         returnType: Type.Type | null,
-        isGetter: boolean,
         implementation: (...args: Value.Value[]) => Value.Value | void
     };
 
     export type MethodObject = {
         argTypes: Type.Type[],
         returnType: Type.Type | null,
+        isGetter: boolean,
         implementation: (this: Value.CustomObject, ...args: Value.Value[]) => Value.Value | void
     };
 
