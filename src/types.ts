@@ -161,6 +161,7 @@ export namespace Type {
     export type FunctionObject = {
         argTypes: Type.Type[],
         returnType: Type.Type | null,
+        isGetter: boolean,
         implementation: (...args: Value.Value[]) => Value.Value | void
     };
 
