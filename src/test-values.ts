@@ -1,5 +1,3 @@
-/// <reference path="../typings/index.d.ts" />
-
 import { expect } from "chai";
 import { Type, Value } from ".";
 

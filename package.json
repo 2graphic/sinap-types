@@ -19,19 +19,21 @@
     "build": "tsc -p .",
     "test:nobuild": "mocha --colors lib/test-*.js",
     "test": "npm run build && npm run test:nobuild",
-    "typings": "typings install",
-    "prepublish": "npm run typings && npm run lint && npm run test"
+    "prepublish": "npm run lint && npm run test"
   },
   "devDependencies": {
     "@types/node": "^7.0.12",
     "chai": "^3.5.0",
+    "@types/chai": "^3.4.35",
     "mocha": "^3.2.0",
+    "@types/mocha": "^2.2.40",
     "tslint": "^4.5.1",
     "typescript": "^2.2.2",
     "typescript-formatter": "^5.1.2",
     "typings": "^2.1.0"
   },
   "dependencies": {
-    "uuid": "^3.0.1"
+    "uuid": "^3.0.1",
+    "@types/uuid": "^2.0.29"
   }
 }

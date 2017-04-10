@@ -1,5 +1,3 @@
-/// <reference path="../typings/index.d.ts" />
-
 import { expect } from "chai";
 import { setEquivalent, mapEquivalent, traverse, deepCopy, deepEqual, imap, ifilter, ireduce } from "./util";
 

@@ -1,5 +1,3 @@
-/// <reference path="../typings/index.d.ts" />
-
 import { Type, Value } from ".";
 
 describe("speed", () => {
