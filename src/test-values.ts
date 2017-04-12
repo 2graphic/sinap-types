@@ -96,7 +96,7 @@ describe("Values", () => {
             const tB = new Type.CustomObject("B", null, new Map([["bar", tnumber]]));
             const tInter = new Type.Intersection([tA, tB]);
 
-            const v = new Value.Intersection(tInter, env);
+            const v = new Value.CustomObject(tInter, env);
 
             const n15 = new Value.Primitive(tnumber, env, 15);
             const n16 = new Value.Primitive(tnumber, env, 16);
@@ -166,7 +166,7 @@ describe("Values", () => {
             const tB = new Type.CustomObject("B", null, new Map([["bar", tnumber]]));
             const tInter = new Type.Intersection([tA, tB]);
 
-            const v = new Value.Intersection(tInter, env);
+            const v = new Value.CustomObject(tInter, env);
 
             const n15 = new Value.Primitive(tnumber, env, 15);
             const n16 = new Value.Primitive(tnumber, env, 16);
@@ -400,7 +400,7 @@ describe("Values", () => {
 
         it("intersections", (done) => {
             const env = new Value.Environment();
-            const n1 = new Value.Intersection(new Type.Intersection([new Type.CustomObject("obj", null, new Map<string, Type.Type>([
+            const n1 = new Value.CustomObject(new Type.Intersection([new Type.CustomObject("obj", null, new Map<string, Type.Type>([
                 ["a", new Type.Union([tnumber])],
                 ["b", tnumber],
             ]))]), env);
@@ -419,7 +419,7 @@ describe("Values", () => {
             const env = new Value.Environment();
             const thello = new Type.Literal("hello");
             const tworld = new Type.Literal("world");
-            const n1 = new Value.Intersection(new Type.Intersection([new Type.CustomObject("obj", null, new Map<string, Type.Type>([
+            const n1 = new Value.CustomObject(new Type.Intersection([new Type.CustomObject("obj", null, new Map<string, Type.Type>([
                 ["a", new Type.Union([thello, tworld])],
                 ["b", tnumber],
             ]))]), env);
@@ -724,7 +724,7 @@ describe("Values", () => {
         it("initializes Intersection", () => {
             const env = new Value.Environment();
 
-            const i1 = new Value.Intersection(new Type.Intersection([new Type.CustomObject("rec1", null, new Map([
+            const i1 = new Value.CustomObject(new Type.Intersection([new Type.CustomObject("rec1", null, new Map([
                 ["hello", new Type.Primitive("number")]
             ]))]), env);
 

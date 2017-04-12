@@ -112,9 +112,9 @@ describe("Deserialization", () => {
         const v2 = env.fromSerial(t, {
             hi: { "kind": "value-reference", "uuid": "15-15-15-15" },
             hey: { "kind": "value-reference", "uuid": "15-15-15-15" },
-        }, "object-2") as Value.Intersection;
+        }, "object-2") as Value.CustomObject;
 
-        expect(v2).to.instanceof(Value.Intersection);
+        expect(v2).to.instanceof(Value.CustomObject);
         expect(v2.get("hi")).to.equal(v1);
         expect(v2.get("hey")).to.equal(v1);
     });

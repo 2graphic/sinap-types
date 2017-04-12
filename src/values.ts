@@ -35,7 +35,7 @@ export namespace Value {
          * @param type type of the object to create
          */
         make(type: Type.CustomObject, uuid?: string): Value.CustomObject;
-        make(type: Type.Intersection, uuid?: string): Value.Intersection;
+        make(type: Type.Intersection, uuid?: string): Value.CustomObject;
         make(type: Type.Literal, uuid?: string): Value.Literal;
         make(type: Type.Primitive, uuid?: string): Value.Primitive;
         make(type: Value.ArrayType, uuid?: string): Value.ArrayObject;
@@ -699,13 +699,13 @@ export namespace Value {
     }
 
     @TypeValue(Type.CustomObject)
+    @TypeValue(Type.Intersection)
     export class CustomObject extends BaseObject {
         readonly simpleRepresentation: any = {};
 
-        constructor(readonly type: Type.CustomObject, environment: Environment) {
+        constructor(readonly type: Type.CustomObject | Type.Intersection, environment: Environment) {
             super(type, environment);
         }
-
         initialize() {
             for (const [key, member] of this.type.members) {
                 this.set(key, this.environment.make(member));
@@ -714,10 +714,22 @@ export namespace Value {
         }
 
         call(name: string, ...args: Value[]): Value | void {
-            const method = this.type.methods.get(name);
+            let maybeMethod: Type.MethodObject | undefined;
+            if (this.type instanceof Type.Intersection) {
+                for (const t of this.type.types) {
+                    maybeMethod = t.methods.get(name);
+                    if (maybeMethod) {
+                        break;
+                    }
+                }
+            } else {
+                maybeMethod = this.type.methods.get(name);
+            }
+            const method = maybeMethod;
             if (!method) {
                 throw new Error(`cannot call "${name}". Method not found`);
             }
+
             args.map((arg, idx) => {
                 if (!Type.isSubtype(arg.type, method.argTypes[idx])) {
                     throw new Error("incompatible arguments");
@@ -753,67 +765,6 @@ export namespace Value {
                 this.environment.add(value);
                 this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
             }
-        }
-
-        loadSerial(jso: any) {
-            for (const key in jso) {
-                this.environment.whenHas(jso[key].uuid, (value: Value) => {
-                    this.set(key, value);
-                });
-            }
-        }
-    }
-
-    class CustomObjectForIntersection extends CustomObject {
-        get serialRepresentation() {
-            return {};
-        };
-        constructor(type: Type.CustomObject, environment: Environment, readonly simpleRepresentation: any) {
-            super(type, environment);
-        }
-    }
-
-    @TypeValue(Type.Intersection)
-    export class Intersection extends BaseObject {
-        simpleRepresentation: any = {};
-
-        private values = new Map<Type.CustomObject, CustomObjectForIntersection>();
-
-        constructor(readonly type: Type.Intersection, environment: Environment) {
-            super(type, environment);
-
-            for (const innerType of type.types) {
-                const value = new CustomObjectForIntersection(innerType, environment, this.simpleRepresentation);
-                this.values.set(innerType, value);
-            }
-        }
-
-        initialize() {
-            for (const [key, member] of this.type.members) {
-                this.set(key, this.environment.make(member));
-            }
-            this.environment.valueChanged(this, "initialized");
-        }
-
-        get(key: string): Value {
-            return CustomObject.prototype.get.call(this, key);
-        }
-
-        set(key: string, value: Value) {
-            for (const type of this.type.types) {
-                if (type.members.has(key)) {
-                    return this.values.get(type)!.set.call(this, key, value);
-                }
-            }
-        }
-
-        call(method: string, ...args: Value[]) {
-            for (const type of this.type.types) {
-                if (type.methods.has(method)) {
-                    return this.values.get(type)!.call(method, ...args);
-                }
-            }
-            throw new Error(`cannot call "${name}". Method not found`);
         }
 
         loadSerial(jso: any) {
