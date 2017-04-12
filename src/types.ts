@@ -183,17 +183,17 @@ export namespace Type {
             readonly superType: CustomObject | null,
             readonly members: Map<string, Type>,
             readonly methods = new Map<string, MethodObject>(),
-            private prettyNames = new Map<string, string>(),
-            private visibility = new Map<string, boolean>(),
+            readonly _prettyNames = new Map<string, string>(),
+            readonly _visibility = new Map<string, boolean>(),
         ) {
         }
 
         prettyName(key: string) {
-            return this.prettyNames.get(key) || inferPrettyName(key);
+            return this._prettyNames.get(key) || inferPrettyName(key);
         }
 
         isVisible(key: string) {
-            return this.visibility.get(key) !== false;
+            return this._visibility.get(key) !== false;
         }
 
         equals(that: Type): boolean {
@@ -296,10 +296,31 @@ export namespace Type {
                 }
             }
 
+            // todo: how to do this if the type changes...
             for (const [key, originalTypes] of keyTypes) {
                 const intersected = intersectTypes(originalTypes, mappings);
                 this.members.set(key, intersected);
             }
+        }
+
+        prettyName(key: string) {
+            for (const type of this.types) {
+                const name = type._prettyNames.get(key);
+                if (name) {
+                    return name;
+                }
+            }
+            return inferPrettyName(key);
+        }
+
+        isVisible(key: string) {
+            for (const type of this.types) {
+                const name = type._visibility.get(key);
+                if (name !== undefined) {
+                    return name;
+                }
+            }
+            return true;
         }
 
         equals(that: Type): boolean {
