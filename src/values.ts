@@ -513,6 +513,7 @@ export namespace Value {
                 if (!assignRecords(newValue, this.underlying[n])) {
                     const oldValue = this.underlying[n];
                     this.underlying[n] = newValue;
+                    this.environment.add(newValue);
                     this.environment.valueChanged(this, { index: n, from: oldValue, to: newValue });
                     return newValue;
                 } else {
@@ -606,6 +607,7 @@ export namespace Value {
                 if (!assignRecords(newValue, this.underlying[n])) {
                     const oldValue = this.underlying[n];
                     this.underlying[n] = newValue;
+                    this.environment.add(newValue);
                     this.environment.valueChanged(this, { index: n, from: oldValue, to: newValue });
                     return newValue;
                 } else {
