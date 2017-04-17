@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { setEquivalent, mapEquivalent, traverse, deepCopy, deepEqual, imap, ifilter, ireduce } from "./util";
+import { setEquivalent, mapEquivalent, traverse, deepCopy, deepEqual, imap, ifilter, ireduce, izip } from "./util";
 
 describe("util", () => {
     it("mapEquivalent", () => {
@@ -156,5 +156,17 @@ describe("util", () => {
     it("ireduce", () => {
         expect(ireduce((x, y) => x + y, 2, [0, 1, 5])).to.deep.equal(8);
         expect(ireduce((x, y) => x + y, "2", [0, 1, 5])).to.deep.equal("2015");
+    });
+
+    it("izip", () => {
+        expect([...izip([0, 1, 5], [7, 2])]).to.deep.equal([[0, 7], [1, 2]]);
+        expect([...izip([0, 1, 5, 6], [7, 2, 4, 8], [1, 2, 3, 4])]).to.deep.equal([
+            [0, 7, 1],
+            [1, 2, 2],
+            [5, 4, 3],
+            [6, 8, 4],
+        ]);
+
+        expect([...izip([1, 2], ['1', '2'])]).to.deep.equal([[1, '1'], [2, '2']]);
     });
 });

@@ -1,5 +1,5 @@
 import { Type } from "./types";
-import { traverse, deepCopy, deepEqual, setEquivalent, ifilter, imap } from "./util";
+import { traverse, deepCopy, deepEqual, setEquivalent, ifilter, imap, izip, ireduce } from "./util";
 import { v4 as uuid } from "uuid";
 
 export namespace Value {
@@ -41,6 +41,7 @@ export namespace Value {
         make(type: Value.ArrayType, uuid?: string): Value.ArrayObject;
         make(type: Value.MapType, uuid?: string): Value.MapObject;
         make(type: Value.SetType, uuid?: string): Value.SetObject;
+        make(type: Value.TupleType, uuid?: string): Value.TupleObject;
         make(type: Type.Union, uuid?: string): Value.Union;
         make(type: Type.Type, uuid?: string): Value.Value;
         make(type: Type.Type, uuid?: string) {
@@ -203,7 +204,7 @@ export namespace Value {
         }
     }
 
-    type ExtendedMetaType = Type.TypeType | typeof ArrayType | typeof SetType | typeof MapType;
+    type ExtendedMetaType = Type.TypeType | typeof ArrayType | typeof SetType | typeof MapType | typeof TupleType;
     const classes: [ExtendedMetaType, { new (t: Type.Type, environment: Environment): Value }][] = [];
     function valueConstructorForType(type: Type.Type) {
         const potentialConstructors = classes.filter(([t, _]) => type instanceof t).map(([_, v]) => v);
@@ -533,6 +534,99 @@ export namespace Value {
                     this.push(value);
                 });
             }
+        }
+    }
+
+    const TupleMetaType: Type.MetaType = {
+        name: "Tuple",
+        intersect: (types: Iterable<TupleType>, mappings) => {
+            // iterable of lists of parameter types
+            const parameterSets = imap(t => t.typeParameters, types);
+            // transpose, so now all the 1st index types are grouped together
+            const setsForParameters = izip(...parameterSets);
+            // intersect all the groups of parameters
+            const parameters = imap(ts => Type.intersectTypes(ts, mappings), setsForParameters);
+            return new TupleType([...parameters]);
+        }
+    };
+
+    export class TupleType implements Type.Type {
+        metaType = TupleMetaType;
+        name = "Tuple";
+        constructor(readonly typeParameters: Type.Type[]) {
+
+        }
+
+        equals(that: Type.Type): boolean {
+            if (!(that instanceof TupleType)) {
+                return false;
+            }
+            if (this.typeParameters.length !== that.typeParameters.length) {
+                return false;
+            }
+            return ireduce((prev, [a, b]) => prev && a.equals(b), true, izip(this.typeParameters, that.typeParameters));
+        }
+
+        isSubtype(that: Type.Type): boolean {
+            if (!(that instanceof TupleType)) {
+                return false;
+            }
+            if (this.typeParameters.length !== that.typeParameters.length) {
+                return false;
+            }
+
+            return ireduce((prev, [a, b]) => prev && Type.isSubtype(a, b), true, izip(this.typeParameters, that.typeParameters));
+        }
+    }
+
+    @TypeValue(TupleType)
+    export class TupleObject extends BaseObject {
+        private underlying: Value[] = [];
+
+        get simpleRepresentation() {
+            return this.underlying;
+        }
+
+        constructor(readonly type: TupleType, environment: Environment) {
+            super(type, environment);
+
+            for (const t of this.type.typeParameters) {
+                this.underlying.push(this.environment.make(t));
+            }
+        }
+
+        index(n: number, newValue?: Value) {
+            if (newValue) {
+                if (n >= this.type.typeParameters.length || n < 0) {
+                    throw new Error(`index ${n} out of range`);
+                }
+                if (!Type.isSubtype(newValue.type, this.type.typeParameters[n])) {
+                    throw new Error(`${newValue.type} is not assignable to ${this.type.typeParameters[n]} at index: ${n}`);
+                }
+                if (!assignRecords(newValue, this.underlying[n])) {
+                    const oldValue = this.underlying[n];
+                    this.underlying[n] = newValue;
+                    this.environment.valueChanged(this, { index: n, from: oldValue, to: newValue });
+                    return newValue;
+                } else {
+                    // note this shouldn't assign, the below is correct
+                    return this.underlying[n];
+                }
+            } else {
+                return this.underlying[n];
+            }
+        }
+
+        [Symbol.iterator]() {
+            return this.underlying[Symbol.iterator]();
+        }
+
+        loadSerial(jso: any[]) {
+            jso.forEach((ref, idx) => {
+                this.environment.whenHas(ref.uuid, (value: Value) => {
+                    this.index(idx, value);
+                });
+            });
         }
     }
 

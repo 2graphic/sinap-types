@@ -708,6 +708,18 @@ describe("Values", () => {
             expect([...(p1.value.world as Value.ArrayObject)]).to.deep.equal([]);
 
         });
+        it("initializes tuples", () => {
+            const env = new Value.Environment();
+            const p1 = new Value.TupleObject(new Value.TupleType([
+                new Type.Literal("hi"),
+                new Type.Literal(17),
+            ]), env);
+
+            expect(p1.index(0)).to.instanceof(Value.Literal);
+            expect(p1.index(1)).to.instanceof(Value.Literal);
+            expect((p1.index(0) as Value.Primitive).value).to.equal("hi");
+            expect((p1.index(1) as Value.Primitive).value).to.equal(17);
+        });
 
         it("initializes CustomObject", () => {
             const env = new Value.Environment();

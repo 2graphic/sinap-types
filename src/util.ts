@@ -142,3 +142,26 @@ export function ireduce<T, V>(func: (prev: V, t: T) => V, init: V, inp: Iterable
     }
     return result;
 }
+
+
+export function izip<T1, T2>(a: Iterable<T1>, b: Iterable<T2>): IterableIterator<[T1, T2]>;
+export function izip<T1, T2, T3>(a: Iterable<T1>, b: Iterable<T2>, c: Iterable<T3>): IterableIterator<[T1, T2, T3]>;
+export function izip<T1, T2, T3, T4>(a: Iterable<T1>, b: Iterable<T2>, c: Iterable<T3>, d: Iterable<T4>): IterableIterator<[T1, T2, T3, T4]>;
+export function izip<T>(...inp: Iterable<T>[]): IterableIterator<T[]>;
+export function* izip<T>(...inp: Iterable<T>[]) {
+    const iters = inp.map(i => i[Symbol.iterator]());
+    while (true) {
+        let done = false;
+        const vals = iters.map(i => {
+            const nxt = i.next();
+            if (nxt.done) {
+                done = true;
+            }
+            return nxt.value;
+        });
+        if (done) {
+            return;
+        }
+        yield vals;
+    }
+}
