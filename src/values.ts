@@ -120,7 +120,7 @@ export namespace Value {
                     return false;
                 }
                 if (!this.values.has(v.uuid)) {
-                    new Error("while traversing dependencies, a Value was found that was not in the environment");
+                    throw new Error("while traversing dependencies, a Value was found that was not in the environment");
                 }
                 let pool = this.listenersForValue.get(v);
                 if (pool) {
