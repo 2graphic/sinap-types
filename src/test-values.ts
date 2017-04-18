@@ -347,6 +347,116 @@ describe("Values", () => {
         });
     });
 
+    describe("dependencies", () => {
+        it("sets up a dependency relation", () => {
+            const env = new Value.Environment();
+            const v1 = new Value.Record(new Type.Record("rec", new Map([["s", new Type.Primitive("string")]])), env);
+            const v2 = new Value.Primitive(new Type.Primitive("string"), env, "hello");
+            env.add(v1);
+            v1.value.s = v2;
+            expect(env.values.has(v2.uuid)).to.be.true;
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v2)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(1);
+            expect(v2.dependencyParents.has(v1)).to.be.true;
+        });
+        it("removes dependency relation", () => {
+            const env = new Value.Environment();
+            const v1 = new Value.Record(new Type.Record("rec", new Map([["s", new Type.Primitive("string")]])), env);
+            const v2 = new Value.Primitive(new Type.Primitive("string"), env, "hello");
+            const v3 = new Value.Primitive(new Type.Primitive("string"), env, "world");
+            env.add(v1);
+            v1.value.s = v2;
+            expect(env.values.has(v2.uuid)).to.be.true;
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v2)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(1);
+            expect(v2.dependencyParents.has(v1)).to.be.true;
+            v1.value.s = v3;
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v3)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(0);
+            expect(v3.dependencyParents.size).to.equal(1);
+            expect(v3.dependencyParents.has(v1)).to.be.true;
+        });
+        it("removes dependency relation (customobject)", () => {
+            const env = new Value.Environment();
+            const v1 = new Value.CustomObject(new Type.CustomObject("rec", null, new Map([["s", new Type.Primitive("string")]])), env);
+            const v2 = new Value.Primitive(new Type.Primitive("string"), env, "hello");
+            const v3 = new Value.Primitive(new Type.Primitive("string"), env, "world");
+            env.add(v1);
+            v1.set("s", v2);
+            expect(env.values.has(v2.uuid)).to.be.true;
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v2)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(1);
+            expect(v2.dependencyParents.has(v1)).to.be.true;
+            v1.set("s", v3);
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v3)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(0);
+            expect(v3.dependencyParents.size).to.equal(1);
+            expect(v3.dependencyParents.has(v1)).to.be.true;
+        });
+        it("removes dependency relation (intersection)", () => {
+            const env = new Value.Environment();
+            const v1 = new Value.CustomObject(new Type.Intersection([new Type.CustomObject("rec", null, new Map([["s", new Type.Primitive("string")]]))]), env);
+            const v2 = new Value.Primitive(new Type.Primitive("string"), env, "hello");
+            const v3 = new Value.Primitive(new Type.Primitive("string"), env, "world");
+            env.add(v1);
+            v1.set("s", v2);
+            expect(env.values.has(v2.uuid)).to.be.true;
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v2)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(1);
+            expect(v2.dependencyParents.has(v1)).to.be.true;
+            v1.set("s", v3);
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v3)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(0);
+            expect(v3.dependencyParents.size).to.equal(1);
+            expect(v3.dependencyParents.has(v1)).to.be.true;
+        });
+        it("removes dependency relation (cyclic)", () => {
+            const env = new Value.Environment();
+            const t1 = new Type.CustomObject("rec", null, new Map());
+            const t2 = new Type.CustomObject("rec", null, new Map([['one', t1]]));
+            t1.members.set('two', t2);
+            const v1 = new Value.CustomObject(t1, env);
+            const v2 = new Value.CustomObject(t2, env);
+            env.add(v1);
+            v1.set("two", v2);
+            expect(env.values.has(v2.uuid)).to.be.true;
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v2)).to.be.true;
+            expect(v1.dependencyParents.size).to.equal(0);
+            expect(v2.dependencyParents.size).to.equal(1);
+            expect(v2.dependencyParents.has(v1)).to.be.true;
+            expect(v2.dependencyChildren.size).to.equal(0);
+            v2.set("one", v1);
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v2)).to.be.true;
+            expect(v1.dependencyParents.size).to.equal(1);
+            expect(v1.dependencyParents.has(v2)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(1);
+            expect(v2.dependencyParents.has(v1)).to.be.true;
+            expect(v2.dependencyChildren.size).to.equal(1);
+            expect(v2.dependencyChildren.has(v1)).to.be.true;
+            const v3 = new Value.CustomObject(t2, env);
+            v1.set("two", v3);
+            expect(v1.dependencyChildren.size).to.equal(1);
+            expect(v1.dependencyChildren.has(v3)).to.be.true;
+            expect(v1.dependencyParents.size).to.equal(1);
+            expect(v1.dependencyParents.has(v2)).to.be.true;
+            expect(v2.dependencyParents.size).to.equal(0);
+            expect(v2.dependencyChildren.size).to.equal(1);
+            expect(v2.dependencyChildren.has(v1)).to.be.true;
+            expect(v3.dependencyChildren.size).to.equal(0);
+            expect(v3.dependencyParents.size).to.equal(1);
+            expect(v3.dependencyParents.has(v1)).to.be.true;
+        });
+    });
+
     describe("listeners", () => {
         function listenForTheseChanges(env: Value.Environment, listenRoot: Value.Value, done: () => void, changesExpected: [Value.Value, any][]) {
             // set up a listener

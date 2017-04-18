@@ -190,11 +190,20 @@ export namespace Value {
             for (const root of roots) {
                 traverse(root);
             }
-            for (const [key, value] of this.values) {
+            for (const value of this.values.values()) {
                 if (!seen.has(value)) {
-                    this.values.delete(key);
+                    this.delete(value);
                 }
             }
+        }
+
+        delete(value: Value) {
+            for (const listener of this.listeners) {
+                if (listener.root.uuid === value.uuid) {
+                    this.listeners.delete(listener);
+                }
+            }
+            this.values.delete(value.uuid);
         }
 
         fromSerial(t: Type.Type, jso: any, uuid: string) {
