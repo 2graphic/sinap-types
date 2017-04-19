@@ -51,7 +51,7 @@ describe("Tutorial", () => {
 
         const env = new Value.Environment();
 
-        const t = new Type.Record("r1", new Map([["l", new Type.Primitive("number")]]));
+        const t = new Type.Record(new Map([["l", new Type.Primitive("number")]]));
         const v = new Value.Record(t, env);
 
         // v.serialRepresentation:
@@ -159,7 +159,7 @@ describe("Tutorial", () => {
 
     describe("deep equal", () => {
         const tnumber = new Type.Primitive("number");
-        const trec1 = new Type.Record("rec1", new Map([["a", tnumber]]));
+        const trec1 = new Type.Record(new Map([["a", tnumber]]));
 
         it("equates records", () => {
             const env = new Value.Environment();
@@ -200,9 +200,9 @@ describe("Tutorial", () => {
 
     describe("listeners", () => {
         const tnumber = new Type.Primitive("number");
-        const trec1 = new Type.Record("rec1", new Map([["a", tnumber]]));
-        const trec2 = new Type.Record("rec2", new Map([["b", trec1]]));
-        const trec3 = new Type.Record("rec3", new Map([["c", trec2]]));
+        const trec1 = new Type.Record(new Map([["a", tnumber]]));
+        const trec2 = new Type.Record(new Map([["b", trec1]]));
+        const trec3 = new Type.Record(new Map([["c", trec2]]));
 
         it("Records", (done) => {
             const env = new Value.Environment();

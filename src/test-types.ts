@@ -47,23 +47,23 @@ describe("Types", () => {
         describe("Record", () => {
             it("test 1", () => {
                 expect(Type.isSubtype(
-                    new Type.Record("Rec1", new Map([["a", new Type.Literal(4)]])),
-                    new Type.Record("Rec2", new Map([["a", new Type.Literal(4)]])))
+                    new Type.Record(new Map([["a", new Type.Literal(4)]])),
+                    new Type.Record(new Map([["a", new Type.Literal(4)]])))
                 ).to.be.true;
 
                 expect(Type.isSubtype(
-                    new Type.Record("Rec1", new Map([["a", new Type.Literal(4)]])),
-                    new Type.Record("Rec2", new Map([["a", new Type.Primitive("number")]])))
+                    new Type.Record(new Map([["a", new Type.Literal(4)]])),
+                    new Type.Record(new Map([["a", new Type.Primitive("number")]])))
                 ).to.be.true;
 
                 expect(Type.isSubtype(
-                    new Type.Record("Rec1", new Map([["a", new Type.Literal(4)]])),
-                    new Type.Record("Rec2", new Map([["a", new Type.Literal(7)]])))
+                    new Type.Record(new Map([["a", new Type.Literal(4)]])),
+                    new Type.Record(new Map([["a", new Type.Literal(7)]])))
                 ).to.be.false;
 
                 expect(Type.isSubtype(
-                    new Type.Record("Rec1", new Map([["a", new Type.Literal(4)]])),
-                    new Type.Record("Rec2", new Map([["b", new Type.Literal(4)]])))
+                    new Type.Record(new Map([["a", new Type.Literal(4)]])),
+                    new Type.Record(new Map([["b", new Type.Literal(4)]])))
                 ).to.be.false;
             });
         });
@@ -178,20 +178,20 @@ describe("Types", () => {
 
     describe("Record", () => {
         it("infers pretty names", () => {
-            const rec1 = new Type.Record("Rec1", new Map([["a", new Type.Literal("hello")]]));
+            const rec1 = new Type.Record(new Map([["a", new Type.Literal("hello")]]));
             expect(rec1.prettyName('a')).to.equal("A");
 
-            const rec2 = new Type.Record("Rec2", new Map([["helloWorld", new Type.Literal("hello")]]));
+            const rec2 = new Type.Record(new Map([["helloWorld", new Type.Literal("hello")]]));
             expect(rec2.prettyName("helloWorld")).to.equal("Hello World");
 
-            const rec3 = new Type.Record("Rec3", new Map([
+            const rec3 = new Type.Record(new Map([
                 ["helloWorld", new Type.Literal("hello")],
                 ["hiWorld", new Type.Literal("hello")]
             ]), new Map([["hiWorld", "Greet Key"]]));
             expect(rec3.prettyName("helloWorld")).to.equal("Hello World");
             expect(rec3.prettyName("hiWorld")).to.equal("Greet Key");
 
-            const rec4 = new Type.Record("Rec4", new Map([
+            const rec4 = new Type.Record(new Map([
                 ["helloWorld", new Type.Literal("hello")],
                 ["hiWorld", new Type.Literal("hello")]
             ]));

@@ -79,7 +79,7 @@ describe("Values", () => {
     describe("Records", () => {
         it("simple", () => {
             const env = new Value.Environment();
-            const t = new Type.Record("r1", new Map([["l", new Type.Primitive("number")]]));
+            const t = new Type.Record(new Map([["l", new Type.Primitive("number")]]));
             const v = new Value.Record(t, env);
             expect(v.serialRepresentation.l.kind).to.deep.equal("value-reference");
             expect(v.serialRepresentation.l).to.have.property("uuid");
@@ -263,7 +263,7 @@ describe("Values", () => {
 
     describe("deep equal", () => {
         const tnumber = new Type.Primitive("number"), tstring = new Type.Primitive("string");
-        const trec1 = new Type.Record("rec1", new Map([["a", tnumber]]));
+        const trec1 = new Type.Record(new Map([["a", tnumber]]));
         it("equates primitives", () => {
             const env = new Value.Environment();
             const n1a = new Value.Primitive(tnumber, env, 1);
@@ -350,7 +350,7 @@ describe("Values", () => {
     describe("dependencies", () => {
         it("sets up a dependency relation", () => {
             const env = new Value.Environment();
-            const v1 = new Value.Record(new Type.Record("rec", new Map([["s", new Type.Primitive("string")]])), env);
+            const v1 = new Value.Record(new Type.Record(new Map([["s", new Type.Primitive("string")]])), env);
             const v2 = new Value.Primitive(new Type.Primitive("string"), env, "hello");
             env.add(v1);
             v1.value.s = v2;
@@ -362,7 +362,7 @@ describe("Values", () => {
         });
         it("removes dependency relation", () => {
             const env = new Value.Environment();
-            const v1 = new Value.Record(new Type.Record("rec", new Map([["s", new Type.Primitive("string")]])), env);
+            const v1 = new Value.Record(new Type.Record(new Map([["s", new Type.Primitive("string")]])), env);
             const v2 = new Value.Primitive(new Type.Primitive("string"), env, "hello");
             const v3 = new Value.Primitive(new Type.Primitive("string"), env, "world");
             env.add(v1);
@@ -481,9 +481,9 @@ describe("Values", () => {
         }
 
         const tnumber = new Type.Primitive("number");
-        const trec1 = new Type.Record("rec1", new Map([["a", tnumber]]));
-        const trec2 = new Type.Record("rec2", new Map([["b", trec1]]));
-        const trec3 = new Type.Record("rec3", new Map([["c", trec2]]));
+        const trec1 = new Type.Record(new Map([["a", tnumber]]));
+        const trec2 = new Type.Record(new Map([["b", trec1]]));
+        const trec3 = new Type.Record(new Map([["c", trec2]]));
         it("primitives", (done) => {
             const env = new Value.Environment();
             const n1 = new Value.Primitive(tnumber, env, 17);
@@ -807,7 +807,7 @@ describe("Values", () => {
         });
         it("initializes records", () => {
             const env = new Value.Environment();
-            const p1 = new Value.Record(new Type.Record("rec1", new Map<string, Type.Type>([
+            const p1 = new Value.Record(new Type.Record(new Map<string, Type.Type>([
                 ["hello", new Type.Primitive("string")],
                 ["world", new Value.ArrayType(new Type.Primitive("number"))]
             ])), env);

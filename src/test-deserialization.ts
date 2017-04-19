@@ -56,7 +56,7 @@ describe("Deserialization", () => {
     it("deserializes records", () => {
         const env = new Value.Environment();
 
-        const v2 = env.fromSerial(new Type.Record("rec1", new Map([[
+        const v2 = env.fromSerial(new Type.Record(new Map([[
             "hi", new Type.Literal(15)
         ]])), {
                 hi: { "kind": "value-reference", "uuid": "15-15-15-15" }

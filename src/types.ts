@@ -126,9 +126,9 @@ export namespace Type {
 
     export class Record implements Type, RecordLike {
         metaType = RecordMetaType;
+        name: "Record";
 
         constructor(
-            readonly name: string,
             readonly members: Map<string, Type>,
             private prettyNames = new Map<string, string>(),
             private visibility = new Map<string, boolean>(),
