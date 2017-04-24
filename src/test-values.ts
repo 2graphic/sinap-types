@@ -837,8 +837,6 @@ describe("Values", () => {
                 ["hello", new Type.Primitive("number")]
             ])), env);
 
-            p1.initialize();
-
             expect(p1.get("hello")).to.instanceof(Value.Primitive);
             expect((p1.get("hello") as Value.Primitive).value).to.equal(0);
         });
@@ -849,8 +847,6 @@ describe("Values", () => {
             const i1 = new Value.CustomObject(new Type.Intersection([new Type.CustomObject("rec1", null, new Map([
                 ["hello", new Type.Primitive("number")]
             ]))]), env);
-
-            i1.initialize();
 
             expect(i1.get("hello")).to.instanceof(Value.Primitive);
             expect((i1.get("hello") as Value.Primitive).value).to.equal(0);
