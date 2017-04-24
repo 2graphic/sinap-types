@@ -19,7 +19,7 @@
     "build": "tsc -p .",
     "test:nobuild": "mocha --colors lib/test-*.js",
     "test": "npm run build && npm run test:nobuild",
-    "prepublish": "npm run lint && npm run test"
+    "prepublishOnly": "npm run lint && npm run test"
   },
   "devDependencies": {
     "@types/node": "^7.0.12",
