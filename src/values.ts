@@ -591,7 +591,7 @@ export namespace Value {
 
     @TypeValue(TupleType)
     export class TupleObject extends BaseObject {
-        private underlying: (Value | undefined)[] = [];
+        private underlying: Value[] = [];
 
         get simpleRepresentation() {
             return this.underlying;
@@ -599,9 +599,13 @@ export namespace Value {
 
         constructor(readonly type: TupleType, environment: Environment) {
             super(type, environment);
+
+            for (const t of this.type.typeParameters) {
+                this.underlying.push(this.environment.make(t));
+            }
         }
 
-        index(n: number, newValue?: Value): Value.Value {
+        index(n: number, newValue?: Value) {
             if (newValue) {
                 if (n >= this.type.typeParameters.length || n < 0) {
                     throw new Error(`index ${n} out of range`);
@@ -609,30 +613,18 @@ export namespace Value {
                 if (!Type.isSubtype(newValue.type, this.type.typeParameters[n])) {
                     throw new Error(`${newValue.type} is not assignable to ${this.type.typeParameters[n]} at index: ${n}`);
                 }
-                const underlying = this.underlying[n];
-                if (underlying) {
-                    if (!assignRecords(newValue, underlying)) {
-                        const oldValue = this.underlying[n];
-                        this.underlying[n] = newValue;
-                        this.environment.add(newValue);
-                        this.environment.valueChanged(this, { index: n, from: oldValue, to: newValue });
-                        return newValue;
-                    } else {
-                        // note this shouldn't assign, the below is correct
-                        return underlying;
-                    }
-                } else {
+                if (!assignRecords(newValue, this.underlying[n])) {
+                    const oldValue = this.underlying[n];
                     this.underlying[n] = newValue;
                     this.environment.add(newValue);
-                    this.environment.valueChanged(this, { index: n, from: undefined, to: newValue });
+                    this.environment.valueChanged(this, { index: n, from: oldValue, to: newValue });
                     return newValue;
+                } else {
+                    // note this shouldn't assign, the below is correct
+                    return this.underlying[n];
                 }
             } else {
-                const underlying = this.underlying[n];
-                if (!underlying) {
-                    return this.underlying[n] = this.environment.make(this.type.typeParameters[n]);
-                }
-                return underlying;
+                return this.underlying[n];
             }
         }
 
@@ -819,6 +811,12 @@ export namespace Value {
         constructor(readonly type: Type.CustomObject | Type.Intersection, environment: Environment) {
             super(type, environment);
         }
+        initialize() {
+            for (const [key, member] of this.type.members) {
+                this.set(key, this.environment.make(member));
+            }
+            this.environment.valueChanged(this, "initialized");
+        }
 
         call(name: string, ...args: Value[]): Value | void {
             let maybeMethod: Type.MethodObject | undefined;
@@ -855,34 +853,23 @@ export namespace Value {
         }
 
         get(name: string): Value {
-            let value = this.simpleRepresentation[name];
-            if (!value) {
-                return this.set(name, null);
-            }
-            return value;
+            return this.simpleRepresentation[name];
         }
 
-        set(name: string, value: Value): void;
-        set(name: string, value: null): Value;
-        set(name: string, value: Value | null) {
+        set(name: string, value: Value) {
             const type = this.type.members.get(name);
             if (!type) {
                 throw new Error(`field ${name} does not exist`);
             }
-            if (value === null) {
-                return this.environment.make(type);
-            } else {
-                if (!Type.isSubtype(value.type, type)) {
-                    throw new Error(`cannot set field ${name}, type of value passed is incorrect`);
-                }
-                const oldValue = this.simpleRepresentation[name];
-                if (!assignRecords(value, this.simpleRepresentation[name])) {
-                    this.simpleRepresentation[name] = value;
-                    this.environment.add(value);
-                    this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
-                }
+            if (!Type.isSubtype(value.type, type)) {
+                throw new Error(`cannot set field ${name}, type of value passed is incorrect`);
             }
-            return;
+            const oldValue = this.simpleRepresentation[name];
+            if (!assignRecords(value, this.simpleRepresentation[name])) {
+                this.simpleRepresentation[name] = value;
+                this.environment.add(value);
+                this.environment.valueChanged(this, { key: name, from: oldValue, to: value });
+            }
         }
 
         loadSerial(jso: any) {
@@ -896,12 +883,9 @@ export namespace Value {
 
     @TypeValue(Type.Union)
     export class Union extends Value {
-        private _value: Value | undefined = undefined;
+        private _value: Value;
         get value() {
-            if (!this._value) {
-                this.value = this.environment.make(this.type.types.values().next().value);
-            }
-            return this._value!;
+            return this._value;
         }
         set value(v: Value) {
             const old = this._value;
@@ -916,6 +900,8 @@ export namespace Value {
 
         constructor(readonly type: Type.Union, environment: Environment) {
             super(type, environment);
+
+            this.value = this.environment.make(this.type.types.values().next().value);
         }
 
         loadSerial(jso: any) {

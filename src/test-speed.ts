@@ -10,6 +10,7 @@ describe("speed", () => {
             const tobj = new Type.CustomObject("Obj", null, new Map<string, Type.Type>([["string", tstring], ["map", tmap], ["number", tnumber]]));
 
             const v1 = new Value.CustomObject(tobj, env);
+            v1.initialize();
 
             for (let y = 0; y < 50; y++) {
                 v1.set("number", new Value.Primitive(tnumber, env, y));
