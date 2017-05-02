@@ -38,6 +38,17 @@ export namespace Type {
             } else {
                 return false;
             }
+        } else if (b instanceof Union) {
+            if (a instanceof Union) {
+                return a.isSubtype(b);
+            } else {
+                for (const utype of b.types) {
+                    if (Type.isSubtype(a, utype)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
         } else if (a.isSubtype) {
             return a.isSubtype(b);
         } else if (a instanceof Intersection) {

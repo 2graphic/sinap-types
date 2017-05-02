@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { Type } from "./index";
+import { Type, Value } from "./index";
 
 describe("Types", () => {
     describe("Subtype", () => {
@@ -102,6 +102,11 @@ describe("Types", () => {
             const u34 = new Type.Union([t3, t4]);
             const tnum = new Type.Primitive("number");
             const tstring = new Type.Primitive("string");
+
+            it("should have members be subtypes.", () => {
+                expect(Type.isSubtype(t1, u12a)).to.be.true;
+                expect(Type.isSubtype(t2, u12a)).to.be.true;
+            });
 
             it("equal", () => {
                 expect(Type.isSubtype(u12a, u12a)).to.be.true;
@@ -233,6 +238,17 @@ describe("Types", () => {
             expect(tInter.members.get("ab")).to.be.instanceof(Type.Intersection);
             expect((tInter.members.get("ab") as Type.Intersection).members.get("num1")).to.equal(tnumber);
             expect((tInter.members.get("ab") as Type.Intersection).members.get("num2")).to.equal(tnumber);
+        });
+    });
+
+    describe("Array", () => {
+        it("should work with unions.", () => {
+            const t1 = new Type.Literal(1);
+            const t2 = new Type.Literal(2);
+            const union = new Type.Union([t1, t2]);
+            const array = new Value.ArrayType(union);
+            expect(Type.isSubtype(t1, array.typeParameter)).to.be.true;
+            expect(Type.isSubtype(t2, array.typeParameter)).to.be.true;
         });
     });
 
